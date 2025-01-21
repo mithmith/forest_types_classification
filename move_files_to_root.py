@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
+
 def move_files_to_root(root_path: Path):
     """
     Перемещает все файлы из вложенных папок в корневую папку, заменяя существующие файлы, и удаляет пустые папки.
