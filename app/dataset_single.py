@@ -11,7 +11,7 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import utils.geo_mask as geo_mask
+import app.utils.geo_mask as geo_mask
 from loguru import logger
 from osgeo import gdal
 from rasterio.features import Affine

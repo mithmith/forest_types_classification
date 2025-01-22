@@ -9,29 +9,30 @@ import rasterio
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
-from app.modelResNet50_RGB import ResNet50_RGB_Model
+from app.modelResNet50_RGB import ResNet50_RGB_Model, ResNet50_UNet
 from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model
 from app.utils.veg_index import preprocess_band
 
-os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
-os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
-os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
+# os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
+# os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
+# os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
 
-# Specify the path
-path = Path("G:/Orni_forest/forest_changes_dataset/generated_dataset")
+# # Specify the path
+# path = Path("G:/Orni_forest/forest_changes_dataset/generated_dataset")
 
-dataset_geojson_masks_dir = Path("G:/Orni_forest/forest_changes_dataset/masks")
-sentinel_root_dir = Path("G:/Orni_forest/forest_changes_dataset/images")
-train_dataset = ForestTypesDataset(
-    dataset_geojson_masks_dir,
-    sentinel_root_dir,
-    dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train"),
-)
-val_dataset = ForestTypesDataset(
-    dataset_geojson_masks_dir,
-    sentinel_root_dir,
-    dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/validation"),
-)
+# dataset_geojson_masks_dir = Path("G:/Orni_forest/forest_changes_dataset/masks")
+# sentinel_root_dir = Path("G:/Orni_forest/forest_changes_dataset/images")
+# train_dataset = ForestTypesDataset(
+#     dataset_geojson_masks_dir,
+#     sentinel_root_dir,
+#     dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train"),
+# )
+# val_dataset = ForestTypesDataset(
+#     dataset_geojson_masks_dir,
+#     sentinel_root_dir,
+#     dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/validation"),
+# )
+
 # 1. Generate dataset samples
 # train_dataset.generate_dataset(target_samples=4500)
 # exit()
@@ -41,21 +42,26 @@ val_dataset = ForestTypesDataset(
 # print("Sample min/max/avr:\t", np.nanmin(sample), np.nanmax(sample), np.nanmean(sample))
 # print("Mask min/max/avr:\t", np.nanmin(mask), np.nanmax(mask), np.nanmean(mask))
 
-# model = ResNet50_RGB_Model(num_classes=1)
+model = ResNet50_UNet(num_classes=1)
 
-# # Save model summary structure:
-# from torchsummary import summary
-# from torchviz import make_dot
-# summary(model, (3, 512, 512), batch_size=1, device="cpu")
-# output = model(model.prepare_input(sample2))
-# dot = make_dot(output, params=dict(model.named_parameters()))
-# # Save or display the generated graph
-# dot.format = 'png'
-# dot.render('DualEncoderUNetModel_net')
-# from torchview import draw_graph
-# model_graph = draw_graph(model, input_size=[(1,5,512,512), (1,5,512,512)], expand_nested=True)
-# model_graph.visual_graph
-# exit()
+# Save model summary structure:
+from torchsummary import summary
+from torchviz import make_dot
+import torch
+sample = torch.rand((3, 512, 512))
+summary(model, (3, 512, 512), batch_size=1, device="cpu")
+output = model(model.prepare_input(sample))
+dot = make_dot(output, params=dict(model.named_parameters()))
+# Save or display the generated graph
+dot.format = 'png'
+dot.render('ResNet50_UNet')
+
+from torchview import draw_graph
+# Создание графа модели
+model_graph = draw_graph(model, input_size=[(1, 3, 512, 512)], expand_nested=True)
+# Сохранение графа в PNG файл
+model_graph.visual_graph.render(filename="ResNet50_UNet model_structure", format="png", cleanup=True)
+exit()
 
 # Загружаем модель
 # model.load_model(f"G:/Orni_forest/sentinel_forest_types_classification/drying_classic_unet_models_3masks/forest_segmentation_resnet_v{i}.pth")
