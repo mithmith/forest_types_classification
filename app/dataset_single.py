@@ -2,6 +2,7 @@ import json
 import os
 import random
 import re
+import time
 import warnings
 from pathlib import Path
 from typing import Any, Generator
@@ -14,6 +15,9 @@ from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
 from scipy.ndimage import rotate
+from torchsummary import summary
+from torchview import draw_graph
+from torchviz import make_dot
 from tqdm import tqdm
 from xgboost import XGBClassifier
 
@@ -25,7 +29,13 @@ warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
 
 class ForestTypesDataset:
-    def __init__(self, geojson_masks_dir: Path, sentinel_root_path: Path, dataset_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        geojson_masks_dir: Path,
+        sentinel_root_path: Path,
+        dataset_path: Path | None = None,
+        forest_model_path: Path | None = None,
+    ) -> None:
         self.image_shape = (512, 512)
         self.bands_regex_list = {
             "red": r"(\w*)_(\d{8}T\d*)_(B04|B04_10m)\.jp2",
@@ -40,6 +50,7 @@ class ForestTypesDataset:
         self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
         self.images_files = [f for f in os.listdir(sentinel_root_path)]
         self.dataset_length = 0
+        self.forest_model_path = forest_model_path
 
     def __len__(self):
         return self.dataset_length
@@ -328,7 +339,7 @@ class ForestTypesDataset:
         stacked_array, _ = veg_index.calculate_image_data(bands_path_list, bands_list, level=1)
 
         forest_model = XGBClassifier()
-        forest_model.load_model(Path("../forest_model_v8.dat"))
+        forest_model.load_model(self.forest_model_path)
 
         prepared_data = self.prepare_forest_data(stacked_array)
         predictions = forest_model.predict(prepared_data)
@@ -397,3 +408,83 @@ class ForestTypesDataset:
 
             # Yield the stacked bands and corresponding mask
             yield bands_stacked, mask
+
+    def predict_sample_from_dataset(
+        self, model, model_path, sample_num: str, exclude_nir=False, exclude_fMASK=False, visualise=False
+    ):
+        features_names = ["red", "green", "blue"]
+
+        if not exclude_nir:
+            features_names.append("nir")
+
+        input_tensor = []
+        for feature_name in features_names:
+            with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
+                input_tensor.append(veg_index.preprocess_band(f.read(1)))
+
+        ground_truth_tensor = []
+        with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
+            ground_truth_tensor.append(f.read(1))
+
+        if not exclude_fMASK:
+            input_tensor.append(self.create_forest_mask(sample_num))
+
+        input_tensor = np.array(input_tensor)
+        model.load_model(model_path)
+
+        predict_mask = model.evaluate(input_tensor)
+
+        if visualise:
+            plt.figure()
+            plt.subplot(1, 3, 1)
+            plt.imshow(input_tensor[0], cmap="gray")
+            plt.subplot(1, 3, 2)
+            plt.imshow(predict_mask.clip(0.3, 0.75), cmap="gray")
+            plt.subplot(1, 3, 3)
+            plt.imshow(np.squeeze(ground_truth_tensor, axis=0), cmap="gray")
+            plt.show()
+
+        return predict_mask
+
+    def inference_test(self, model, model_path, sample_num: str, num_runs, exclude_nir=False, exclude_fMASK=False):
+        features_names = ["red", "green", "blue"]
+
+        if not exclude_nir:
+            features_names.append("nir")
+
+        input_tensor = []
+        for feature_name in features_names:
+            with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
+                input_tensor.append(veg_index.preprocess_band(f.read(1)))
+
+        ground_truth_tensor = []
+        with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
+            ground_truth_tensor.append(f.read(1))
+
+        if not exclude_fMASK:
+            input_tensor.append(self.create_forest_mask(sample_num))
+
+        input_tensor = np.array(input_tensor)
+        model.load_model(model_path)
+
+        times = []
+        for _ in range(num_runs):
+            start_time = time.perf_counter()
+
+            predict_mask = model.evaluate(input_tensor)
+
+            end_time = time.perf_counter()
+            times.append(end_time - start_time)
+
+        avg_time = sum(times) / num_runs
+        print(f"Average inference time: {avg_time:.6f} seconds")
+
+    def model_summary_structure(self, model, name="model", exclude_nir=False, exclude_fMASK=False):
+        sample, mask = next(self.get_next_generated_sample(exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK))
+        summary(model, sample.shape, batch_size=1, device="cpu")
+        output = model(model.prepare_input(sample))
+        dot = make_dot(output, params=dict(model.named_parameters()))
+        dot.format = "png"
+        dot.render(name)
+        model_graph = draw_graph(model, input_size=sample.shape, expand_nested=True)
+        model_graph.visual_graph

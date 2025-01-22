@@ -1,11 +1,6 @@
 import os
 import random
-import time
 from pathlib import Path
-
-import matplotlib.pyplot as plt
-import numpy as np
-import rasterio
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
@@ -140,7 +135,8 @@ def predict_sample_from_dataset(dataset_dir: Path, sample_num: int):
 dataset_dir = Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train")
 red_tif_files = list(dataset_dir.glob("*_red.tif"))
 random.shuffle(red_tif_files)
-for filename in red_tif_files:
-    # Извлекаем номер выборки и путь до маски
-    n = int(filename.stem.split("_")[0])
-    predict_sample_from_dataset(dataset_dir, n)
+for filename in red_tif_files[:5]:
+    n = filename.stem.split("_")[0]
+    val_dataset.inference_test(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"), n, 100, exclude_nir=True, exclude_fMASK=True)
+
+task.close()
