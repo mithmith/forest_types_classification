@@ -11,7 +11,6 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import utils.geo_mask as geo_mask
 from loguru import logger
 from osgeo import gdal
 from rasterio.features import Affine
@@ -22,7 +21,10 @@ from scipy.ndimage import rotate
 from tqdm import tqdm
 
 from app.services.base import BoundingBox
-from app.utils.veg_index import evi_formula, ndvi_formula, preprocess_band
+import utils.veg_index as veg_index
+import utils.geo_mask as geo_mask
+
+from xgboost import XGBClassifier
 
 
 class ForestTypesDataset:
@@ -33,6 +35,8 @@ class ForestTypesDataset:
             "green": r"(\w*)_(\d{8}T\d*)_(B03|B03_10m)\.jp2",
             "blue": r"(\w*)_(\d{8}T\d*)_(B02|B02_10m)\.jp2",
             "nir": r"(\w*)_(\d{8}T\d*)_(B08|B08_10m)\.jp2",
+            "swir1": r"(\w*)_(\d{8}T\d*)_(B11|B11_10m)\.jp2",
+            "swir2": r"(\w*)_(\d{8}T\d*)_(B12|B12_10m)\.jp2",
         }
         self.sentinel_root = sentinel_root_path
         self.generated_dataset_path = dataset_path
@@ -469,14 +473,50 @@ class ForestTypesDataset:
 
         logger.info(f"Всего сгенерировано {total} файлов")
 
-    def create_forest_mask(self, nir_path: Path, red_path: Path, blue_path: Path) -> np.ndarray:
-        with rasterio.open(nir_path) as nir, rasterio.open(red_path) as red, rasterio.open(blue_path) as blue:
-            nir_band = preprocess_band(nir.read(1))
-            red_band = preprocess_band(red.read(1))
-            blue_band = preprocess_band(blue.read(1))
-        ndvi = ndvi_formula(nir_band, red_band)
-        evi = evi_formula(nir_band, red_band, blue_band)
-        return np.array((ndvi > 0.5) & (evi > 0.5), dtype=np.uint8)
+    def prepare_forest_data(self, input_data: np.ndarray) -> np.ndarray:
+        """Подготавливает данные для модели."""
+        # Теперь форма: (количество_изображений, высота, ширина, количество_каналов)
+        # logger.debug(f"input_data shape: {input_data.shape}")
+        # images = np.squeeze(input_data, axis=1)
+
+        # Если форма входного массива (высота, ширина, количество_каналов), ничего не переставляем
+        if input_data.ndim == 3:
+            # Сглаживаем первые две размерности (высота и ширина) и оставляем каналы
+            prepared_data = input_data.reshape(-1, input_data.shape[2])
+        else:
+            # Переставляем порядок размерностей для удобства
+            # Из (количество_изображений, высота, ширина, количество_каналов) делаем (высота, ширина, количество_изображений, количество_каналов)
+            images = np.transpose(input_data, (1, 2, 0, 3))
+
+            # Сглаживаем первые две размерности (высота и ширина) и объединяем последние две (количество_изображений и количество_каналов)
+            # Форма: (количество_пикселей, количество_изображений * количество_каналов)
+            prepared_data = images.reshape(images.shape[0] * images.shape[1], -1)
+
+        # logger.debug(f"prepared_data shape: {prepared_data.shape}")
+        return prepared_data
+
+    def create_forest_mask(self, sample_id: str, image_number: int) -> np.ndarray:
+
+        bands_list = ["blue", "nir", "swir1", "swir2", "ndvi", "ndmi", "evi", "ndwi", "nbr", "mndwi"]
+
+        bands_path_list = {}
+
+        for band_key in ["red", "green", "blue", "nir", "swir1", "swir2"]:
+            bands_path_list[band_key] = self.generated_dataset_path / f"{sample_id}_{band_key}_{image_number}.tif"
+
+        stacked_array, _ = veg_index.calculate_image_data(bands_path_list, bands_list, level=1)
+
+        forest_model = XGBClassifier()
+        forest_model.load_model(Path("../forest_model_v8.dat"))
+
+        prepared_data = self.prepare_forest_data(stacked_array)
+        predictions = forest_model.predict(prepared_data)
+
+        num_classes = predictions.shape[1]
+
+        prediction = predictions.reshape(stacked_array.shape[0], stacked_array.shape[1], num_classes)
+
+        return prediction[:, :, 0]
 
     def get_next_generated_sample(
         self, verbose: bool = False
@@ -492,7 +532,7 @@ class ForestTypesDataset:
             bands_path_1, bands_path_2 = [], []
 
             for band_key in self.bands_regex_list.keys():
-                if band_key == "nir":
+                if "swir1" in str(band_key) or "swir2" in str(band_key):
                     continue
                 bands_path_1.append(self.generated_dataset_path / f"{n}_{band_key}_1.tif")
                 bands_path_2.append(self.generated_dataset_path / f"{n}_{band_key}_2.tif")
@@ -500,26 +540,22 @@ class ForestTypesDataset:
             # Загрузка всех бэндов в многослойный массив для bands_path_1
             band_data_1: list[np.ndarray] = []
             for band_path in bands_path_1:
-                if "nir" in str(band_path):
-                    continue
                 with rasterio.open(band_path) as src:
-                    band = preprocess_band(src.read(1))
+                    band = veg_index.preprocess_band(src.read(1))
                     noisy_band = self.add_salt_and_pepper_noise(band, salt_percent=0.01, pepper_percent=0.01)
                     noisy_band = self.add_gaussian_noise(noisy_band)
                     band_data_1.append(noisy_band)  # Чтение первого слоя
-            # band_data_1.append(self.create_forest_mask(bands_path_1[3], bands_path_1[0], bands_path_1[2]))
+            band_data_1.append(self.create_forest_mask(n, 1))
 
             # Загрузка всех бэндов в многослойный массив для bands_path_2
             band_data_2: list[np.ndarray] = []
             for band_path in bands_path_2:
-                if "nir" in str(band_path):
-                    continue
                 with rasterio.open(band_path) as src:
-                    band = preprocess_band(src.read(1))
+                    band = veg_index.preprocess_band(src.read(1))
                     noisy_band = self.add_salt_and_pepper_noise(band, salt_percent=0.01, pepper_percent=0.01)
                     noisy_band = self.add_gaussian_noise(noisy_band)
                     band_data_2.append(noisy_band)  # Чтение первого слоя
-            # band_data_2.append(self.create_forest_mask(bands_path_2[3], bands_path_2[0], bands_path_2[2]))
+            band_data_2.append(self.create_forest_mask(n, 2))
 
             # Загрузка маски
             with rasterio.open(mask_path) as src:
