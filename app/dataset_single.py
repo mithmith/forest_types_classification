@@ -9,8 +9,6 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import utils.geo_mask as geo_mask
-import utils.veg_index as veg_index
 from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
@@ -20,6 +18,7 @@ from tqdm import tqdm
 from xgboost import XGBClassifier
 
 import app.utils.geo_mask as geo_mask
+import app.utils.veg_index as veg_index
 from app.services.base import BoundingBox
 
 warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
