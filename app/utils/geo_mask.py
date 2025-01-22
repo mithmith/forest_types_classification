@@ -8,14 +8,13 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+from loguru import logger
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.transform import Affine
 from shapely.geometry import MultiPolygon, Polygon, mapping
 from shapely.ops import transform as shapely_transform
 from tqdm import tqdm
-
-from loguru import logger
 
 
 def mask_to_polygons(mask: np.ndarray) -> list[Polygon]:
@@ -68,12 +67,7 @@ def mask_from_geojson(geojson_data: dict, mask_shape: tuple[int, int], transform
     geometries = [(row["geometry"], 1) for _, row in geo_df.iterrows() if row["geometry"] is not None]
 
     combine_mask = rasterize(
-        geometries,
-        out_shape=mask_shape,
-        transform=transform_matrix,
-        fill=0,
-        all_touched=True,
-        dtype=np.uint8
+        geometries, out_shape=mask_shape, transform=transform_matrix, fill=0, all_touched=True, dtype=np.uint8
     )
 
     return combine_mask

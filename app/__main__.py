@@ -1,32 +1,37 @@
+import os
+import random
+import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+import rasterio
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
 from app.modelResNet50_RGB import ResNet50_RGB_Model
 from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model
-
-import rasterio
 from app.utils.veg_index import preprocess_band
-import random
-import time
 
-os.environ['GDAL_DATA'] = os.environ['CONDA_PREFIX'] + r'\Library\share\gdal'
-os.environ['PROJ_LIB'] = os.environ['CONDA_PREFIX'] + r'\Library\share'
-os.environ['GDAL_DRIVER_PATH'] = os.environ['CONDA_PREFIX'] + r'\Library\lib\gdalplugins'
+os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
+os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
+os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
 
 # Specify the path
 path = Path("G:/Orni_forest/forest_changes_dataset/generated_dataset")
 
 dataset_geojson_masks_dir = Path("G:/Orni_forest/forest_changes_dataset/masks")
 sentinel_root_dir = Path("G:/Orni_forest/forest_changes_dataset/images")
-train_dataset = ForestTypesDataset(dataset_geojson_masks_dir, sentinel_root_dir,
-                                   dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train"))
-val_dataset = ForestTypesDataset(dataset_geojson_masks_dir, sentinel_root_dir,
-                                 dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/validation"))
+train_dataset = ForestTypesDataset(
+    dataset_geojson_masks_dir,
+    sentinel_root_dir,
+    dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train"),
+)
+val_dataset = ForestTypesDataset(
+    dataset_geojson_masks_dir,
+    sentinel_root_dir,
+    dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/validation"),
+)
 # 1. Generate dataset samples
 # train_dataset.generate_dataset(target_samples=4500)
 # exit()
@@ -94,7 +99,9 @@ def predict_sample_from_dataset(dataset_dir: Path, sample_num: int):
 
     input_tensor = np.array(input_tensor)
     model = ResNet50_RGB_NIR_Model(num_classes=1)
-    model.load_model(f"G:/Orni_forest/sentinel_forest_types_classification/ResNet50_RGB_NIR_Model_drying/forest_segmentation_resnet_v{1}.pth")
+    model.load_model(
+        f"G:/Orni_forest/sentinel_forest_types_classification/ResNet50_RGB_NIR_Model_drying/forest_segmentation_resnet_v{1}.pth"
+    )
 
     num_runs = 100
     times = []

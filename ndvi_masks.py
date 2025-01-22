@@ -1,5 +1,7 @@
-import numpy as np
 from typing import List
+
+import numpy as np
+
 
 def generate_ndvi_masks(ndvi: np.ndarray, n_mask: int = 3, min_delta: float = 0.1) -> List[np.ndarray]:
     """
@@ -15,7 +17,7 @@ def generate_ndvi_masks(ndvi: np.ndarray, n_mask: int = 3, min_delta: float = 0.
     """
     # Игнорируем пустые значения (NaN)
     ndvi_valid = ndvi[~np.isnan(ndvi)]
-    
+
     # Если нет валидных данных, возвращаем пустой список
     if ndvi_valid.size == 0:
         return []
@@ -45,6 +47,7 @@ def generate_ndvi_masks(ndvi: np.ndarray, n_mask: int = 3, min_delta: float = 0.
         masks.append(mask)
 
     return masks
+
 
 # Пример использования:
 ndvi = np.random.uniform(-1, 1, (5, 5))  # Пример массива NDVI

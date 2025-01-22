@@ -1,7 +1,9 @@
 import json
+import os
 import random
 import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Generator
@@ -9,6 +11,7 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+import utils.geo_mask as geo_mask
 from loguru import logger
 from osgeo import gdal
 from rasterio.features import Affine
@@ -17,12 +20,9 @@ from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
 from scipy.ndimage import rotate
 from tqdm import tqdm
-import os
-from datetime import datetime
 
 from app.services.base import BoundingBox
 from app.utils.veg_index import evi_formula, ndvi_formula, preprocess_band
-import utils.geo_mask as geo_mask
 
 
 class ForestTypesDataset:
@@ -44,8 +44,8 @@ class ForestTypesDataset:
         return self.dataset_length
 
     def find_geojson_path_for_img(self, img: str):
-        first_part = img.split('_')[2]
-        second_part = img.split('_')[5]
+        first_part = img.split("_")[2]
+        second_part = img.split("_")[5]
         for s in self.geojson_files:
             if first_part in str(s) and second_part in str(s):
                 mask_path = Path(s)
@@ -53,8 +53,8 @@ class ForestTypesDataset:
         return None
 
     def get_info_from_img(self, img_name: str):
-        first_part = img_name.split('_')[2]
-        second_part = img_name.split('_')[5]
+        first_part = img_name.split("_")[2]
+        second_part = img_name.split("_")[5]
 
         with rasterio.open(self.sentinel_root / Path(img_name) / f"{second_part}_{first_part}_B04_10m.jp2") as src:
             img_width, img_height = src.width, src.height
@@ -76,8 +76,16 @@ class ForestTypesDataset:
 
                 # Сохраняем вырезанные данные в новый tif файл
                 profile: dict = src.profile.copy()
-                profile.update({"height": box.maxy - box.miny, "width": box.maxx - box.minx, "transform": transform,
-                                "driver": "GTiff", "compress": "lzw", "tiled": True})
+                profile.update(
+                    {
+                        "height": box.maxy - box.miny,
+                        "width": box.maxx - box.minx,
+                        "transform": transform,
+                        "driver": "GTiff",
+                        "compress": "lzw",
+                        "tiled": True,
+                    }
+                )
 
                 with rasterio.open(output_path, "w", **profile) as dst:
                     dst.write(cropped_data, 1)
@@ -145,7 +153,7 @@ class ForestTypesDataset:
             for img_file in self.images_files:
                 geojson_mask_path = self.find_geojson_path_for_img(img_file)
                 if geojson_mask_path is None:
-                    logger.info(f'Mask not found for image {img_file}, skipping.')
+                    logger.info(f"Mask not found for image {img_file}, skipping.")
                     continue
 
                 transform_matrix, img_width, img_height, crs = self.get_info_from_img(img_file)
@@ -157,7 +165,7 @@ class ForestTypesDataset:
                 generated_samples = 0
                 while generated_samples < samples_per_image:
                     box = self.get_random_bbox(img_width, img_height, self.image_shape)
-                    mask_region = mask[box.miny: box.maxy, box.minx: box.maxx]
+                    mask_region = mask[box.miny : box.maxy, box.minx : box.maxx]
                     if np.count_nonzero(mask_region) <= 1000:
                         continue
 
@@ -304,7 +312,7 @@ class ForestTypesDataset:
             # Load and stack all bands for the sample
             band_data = []
             for band_key in self.bands_regex_list.keys():
-                if 'nir' in str(band_key) and exclude_nir:
+                if "nir" in str(band_key) and exclude_nir:
                     continue
                 band_file = self.generated_dataset_path / f"{sample_id}_{band_key}.tif"
                 if band_file.exists():
@@ -313,7 +321,7 @@ class ForestTypesDataset:
                         band = self.add_salt_and_pepper_noise(band, salt_percent=0.01, pepper_percent=0.01)
                         band = self.add_gaussian_noise(band)
                         band_data.append(band)
-            # band_data.append(self.create_forest_mask(band_data[3], band_data[0], band_data[2]))
+                # band_data.append(self.create_forest_mask(band_data[3], band_data[0], band_data[2]))
                 else:
                     logger.warning(f"Missing band file: {band_file}, skipping this sample.")
                     continue

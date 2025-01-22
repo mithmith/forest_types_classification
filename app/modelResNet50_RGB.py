@@ -86,9 +86,7 @@ class ResNet50_RGB_Model(nn.Module):
         iou = intersection / union if union > 0 else 0.0  # IoU formula
         return iou.item()
 
-    def train_model(
-        self, train_dataset, val_dataset, epochs=1, batch_size=1, learning_rate=0.001, device="cuda"
-    ):
+    def train_model(self, train_dataset, val_dataset, epochs=1, batch_size=1, learning_rate=0.001, device="cuda"):
         self.to(device)
         criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
@@ -182,7 +180,7 @@ class ResNet50_RGB_Model(nn.Module):
             self.validate(val_dataset, criterion, batch_size, device)
 
             # if (epoch + 1) % 5 == 0:
-                # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
+            # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
 
         print("Training complete")
 

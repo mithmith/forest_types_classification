@@ -543,7 +543,7 @@ class ForestTypesDataset:
                     # Отображение каналов band_data_2
                     for i in range(3):
                         plt.subplot(2, 4, i + 1)
-                        plt.imshow(band_data_2[i]*255, cmap="gray")
+                        plt.imshow(band_data_2[i] * 255, cmap="gray")
                         plt.title(f"Original Band {i + 1}")
 
                     plt.subplot(2, 4, 4)
