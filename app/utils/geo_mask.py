@@ -5,7 +5,6 @@ from typing import Any
 
 import cv2
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 from loguru import logger
@@ -14,7 +13,6 @@ from rasterio.features import rasterize
 from rasterio.transform import Affine
 from shapely.geometry import MultiPolygon, Polygon, mapping
 from shapely.ops import transform as shapely_transform
-from tqdm import tqdm
 
 
 def mask_to_polygons(mask: np.ndarray) -> list[Polygon]:
