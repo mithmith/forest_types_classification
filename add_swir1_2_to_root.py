@@ -1,14 +1,16 @@
-from pathlib import Path
-from loguru import logger
-import re
 import os
-import app.utils.veg_index as veg_index
-from skimage.transform import resize
-import rasterio
+import re
+from pathlib import Path
 
-os.environ['GDAL_DATA'] = os.environ['CONDA_PREFIX'] + r'\Library\share\gdal'
-os.environ['PROJ_LIB'] = os.environ['CONDA_PREFIX'] + r'\Library\share'
-os.environ['GDAL_DRIVER_PATH'] = os.environ['CONDA_PREFIX'] + r'\Library\lib\gdalplugins'
+import rasterio
+from loguru import logger
+from skimage.transform import resize
+
+import app.utils.veg_index as veg_index
+
+os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
+os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
+os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
 
 
 def get_band_images(img_path: Path, band_regex: str) -> Path:
@@ -41,7 +43,6 @@ def save_new_band(bands_path: Path):
         "red": r"(\w*)_(\d{8}T\d*)_(B04|B04_10m)\.jp2",
         "swir1": r"(\w*)_(\d{8}T\d*)_(B11|B11_20m)\.jp2",
         "swir2": r"(\w*)_(\d{8}T\d*)_(B12|B12_20m)\.jp2",
-
     }
 
     red_image_shape = None
@@ -56,14 +57,14 @@ def save_new_band(bands_path: Path):
             else:
                 band, _ = veg_index.read_band(band_path)
                 band_resized = resize(band, red_image_shape)
-                output_path = str(band_path).replace('20m', '10m')
+                output_path = str(band_path).replace("20m", "10m")
                 with rasterio.open(output_path, "w", **profile) as dst:
                     dst.write(band_resized, 1)
 
 
-if __name__ == '__main__':
-    sentinel_root_path = Path('G:/Orni_forest/forest_changes_dataset/images_deforestation')
+if __name__ == "__main__":
+    sentinel_root_path = Path("G:/Orni_forest/forest_changes_dataset/images_deforestation")
     image_files = [f for f in os.listdir(sentinel_root_path)]
     for image_file in image_files:
-        logger.info(f'Processing: {Path(sentinel_root_path / image_file)}')
+        logger.info(f"Processing: {Path(sentinel_root_path / image_file)}")
         save_new_band(Path(sentinel_root_path / image_file))

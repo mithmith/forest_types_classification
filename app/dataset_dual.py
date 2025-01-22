@@ -1,7 +1,9 @@
 import json
+import os
 import random
 import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Generator
@@ -9,6 +11,7 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+import utils.geo_mask as geo_mask
 from loguru import logger
 from osgeo import gdal
 from rasterio.features import Affine
@@ -17,12 +20,9 @@ from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
 from scipy.ndimage import rotate
 from tqdm import tqdm
-import os
-from datetime import datetime
 
 from app.services.base import BoundingBox
 from app.utils.veg_index import evi_formula, ndvi_formula, preprocess_band
-import utils.geo_mask as geo_mask
 
 
 class ForestTypesDataset:
@@ -343,7 +343,7 @@ class ForestTypesDataset:
 
         for _ in tqdm(range(num_samples), position=0, leave=True):
             box = self.get_random_bbox(img_width, img_height, self.image_shape)
-            mask_region = difference_mask[box.miny: box.maxy, box.minx: box.maxx]
+            mask_region = difference_mask[box.miny : box.maxy, box.minx : box.maxx]
             if np.count_nonzero(mask_region) < 1000:
                 # logger.info("Bounding box is empty, trying another one...")
                 continue
@@ -368,17 +368,19 @@ class ForestTypesDataset:
         logger.debug(f"Сгенерировано {total_samples} сэмплов.")
         return total_samples
 
-    def generate_imgs_pairs(self,):
+    def generate_imgs_pairs(
+        self,
+    ):
         grouped_imgs = {}
         for file in self.images_files:
-            key = file.split('_')[5]  # Extract the key part
+            key = file.split("_")[5]  # Extract the key part
             if key not in grouped_imgs:
                 grouped_imgs[key] = []
             grouped_imgs[key].append(file)
 
         sorted_pairs = {}
         for key, group in grouped_imgs.items():
-            sorted_group = sorted(group, key=lambda s: datetime.strptime(s.split('_')[2], '%Y%m%dT%H%M%S'))
+            sorted_group = sorted(group, key=lambda s: datetime.strptime(s.split("_")[2], "%Y%m%dT%H%M%S"))
             sorted_pairs[key] = sorted_group
 
         imgs_pairs = []
@@ -397,8 +399,8 @@ class ForestTypesDataset:
         return imgs_pairs
 
     def find_geojson_path_for_img(self, img: str):
-        first_part = img.split('_')[2]
-        second_part = img.split('_')[5]
+        first_part = img.split("_")[2]
+        second_part = img.split("_")[5]
         for s in self.geojson_files:
             if first_part in str(s) and second_part in str(s):
                 mask_path = Path(s)
@@ -406,8 +408,8 @@ class ForestTypesDataset:
         return None
 
     def get_info_from_img(self, img_name: str):
-        first_part = img_name.split('_')[2]
-        second_part = img_name.split('_')[5]
+        first_part = img_name.split("_")[2]
+        second_part = img_name.split("_")[5]
 
         with rasterio.open(self.sentinel_root / Path(img_name) / f"{second_part}_{first_part}_B04_10m.jp2") as src:
             img_width, img_height = src.width, src.height
@@ -427,10 +429,10 @@ class ForestTypesDataset:
             geojson_before_mask_path = self.find_geojson_path_for_img(img_before)
             geojson_after_mask_path = self.find_geojson_path_for_img(img_after)
             if geojson_before_mask_path is None:
-                logger.info('Mask_before not found, skipping to next pair')
+                logger.info("Mask_before not found, skipping to next pair")
                 continue
             if geojson_after_mask_path is None:
-                logger.info('Mask_after not found, skipping to next pair')
+                logger.info("Mask_after not found, skipping to next pair")
                 continue
 
             transform_matrix, img_width, img_height, crs = self.get_info_from_img(img_before)
@@ -490,7 +492,7 @@ class ForestTypesDataset:
             bands_path_1, bands_path_2 = [], []
 
             for band_key in self.bands_regex_list.keys():
-                if band_key == 'nir':
+                if band_key == "nir":
                     continue
                 bands_path_1.append(self.generated_dataset_path / f"{n}_{band_key}_1.tif")
                 bands_path_2.append(self.generated_dataset_path / f"{n}_{band_key}_2.tif")
@@ -498,7 +500,7 @@ class ForestTypesDataset:
             # Загрузка всех бэндов в многослойный массив для bands_path_1
             band_data_1: list[np.ndarray] = []
             for band_path in bands_path_1:
-                if 'nir' in str(band_path):
+                if "nir" in str(band_path):
                     continue
                 with rasterio.open(band_path) as src:
                     band = preprocess_band(src.read(1))
@@ -510,7 +512,7 @@ class ForestTypesDataset:
             # Загрузка всех бэндов в многослойный массив для bands_path_2
             band_data_2: list[np.ndarray] = []
             for band_path in bands_path_2:
-                if 'nir' in str(band_path):
+                if "nir" in str(band_path):
                     continue
                 with rasterio.open(band_path) as src:
                     band = preprocess_band(src.read(1))
@@ -530,16 +532,14 @@ class ForestTypesDataset:
                 # Отображение каналов band_data_2
                 for i in range(3):
                     plt.subplot(2, 4, i + 1)
-                    plt.imshow(band_data_2[i]*255, cmap="gray")
+                    plt.imshow(band_data_2[i] * 255, cmap="gray")
                     plt.title(f"Original Band {i + 1}")
 
                 plt.subplot(2, 4, 4)
                 plt.imshow(mask_data, cmap="gray")
                 plt.title("Original Mask")
             # Добавляем случайные повороты и отражения
-            band_data_1, band_data_2, mask_data = self.add_random_rotation_and_flip(
-                band_data_1, band_data_2, mask_data
-            )
+            band_data_1, band_data_2, mask_data = self.add_random_rotation_and_flip(band_data_1, band_data_2, mask_data)
 
             if verbose:
                 # Отображение каналов band_data_2
