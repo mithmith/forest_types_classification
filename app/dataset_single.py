@@ -31,7 +31,8 @@ warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
 
 class ForestTypesDataset:
-    def __init__(self, geojson_masks_dir: Path, sentinel_root_path: Path, dataset_path: Path | None = None) -> None:
+    def __init__(self, geojson_masks_dir: Path, sentinel_root_path: Path, dataset_path: Path | None = None,
+                 forest_model_path: Path | None = None) -> None:
         self.image_shape = (512, 512)
         self.bands_regex_list = {
             "red": r"(\w*)_(\d{8}T\d*)_(B04|B04_10m)\.jp2",
@@ -46,6 +47,7 @@ class ForestTypesDataset:
         self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
         self.images_files = [f for f in os.listdir(sentinel_root_path)]
         self.dataset_length = 0
+        self.forest_model_path = forest_model_path
 
     def __len__(self):
         return self.dataset_length
@@ -332,7 +334,7 @@ class ForestTypesDataset:
         stacked_array, _ = veg_index.calculate_image_data(bands_path_list, bands_list, level=1)
 
         forest_model = XGBClassifier()
-        forest_model.load_model(Path("../forest_model_v8.dat"))
+        forest_model.load_model(self.forest_model_path)
 
         prepared_data = self.prepare_forest_data(stacked_array)
         predictions = forest_model.predict(prepared_data)

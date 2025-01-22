@@ -20,15 +20,19 @@ sentinel_root_dir = path_prefix.joinpath(f"forest_changes_dataset/images{damage_
 train_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/train")
 val_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/validation")
 
+forest_model_path = Path("../forest_model_v8.dat")
+
 train_dataset = ForestTypesDataset(
     dataset_geojson_masks_dir,
     sentinel_root_dir,
     dataset_path=train_path,
+    forest_model_path=forest_model_path,
 )
 val_dataset = ForestTypesDataset(
     dataset_geojson_masks_dir,
     sentinel_root_dir,
     dataset_path=val_path,
+    forest_model_path=forest_model_path,
 )
 
 # Version and model
