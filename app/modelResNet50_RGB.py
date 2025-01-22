@@ -277,7 +277,7 @@ class ResNet50_UNet(nn.Module):
         self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=3)
 
         # Save intermediate features for skip connections
-        self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])   # Conv1 + BN + ReLU
+        self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU
         self.enc2 = nn.Sequential(*list(self.encoder.children())[3:5])  # MaxPool + Layer1
         self.enc3 = self.encoder.layer2
         self.enc4 = self.encoder.layer3

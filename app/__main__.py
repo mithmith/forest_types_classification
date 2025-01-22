@@ -44,19 +44,22 @@ from app.utils.veg_index import preprocess_band
 
 model = ResNet50_UNet(num_classes=1)
 
+import torch
+
 # Save model summary structure:
 from torchsummary import summary
 from torchviz import make_dot
-import torch
+
 sample = torch.rand((3, 512, 512))
 summary(model, (3, 512, 512), batch_size=1, device="cpu")
 output = model(model.prepare_input(sample))
 dot = make_dot(output, params=dict(model.named_parameters()))
 # Save or display the generated graph
-dot.format = 'png'
-dot.render('ResNet50_UNet')
+dot.format = "png"
+dot.render("ResNet50_UNet")
 
 from torchview import draw_graph
+
 # Создание графа модели
 model_graph = draw_graph(model, input_size=[(1, 3, 512, 512)], expand_nested=True)
 # Сохранение графа в PNG файл
