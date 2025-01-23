@@ -1,6 +1,7 @@
 import os
 import random
 from pathlib import Path
+
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
@@ -137,6 +138,8 @@ red_tif_files = list(dataset_dir.glob("*_red.tif"))
 random.shuffle(red_tif_files)
 for filename in red_tif_files[:5]:
     n = filename.stem.split("_")[0]
-    val_dataset.inference_test(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"), n, 100, exclude_nir=True, exclude_fMASK=True)
+    val_dataset.inference_test(
+        model, model_save_path.joinpath(f"{model_name}_v{i}.pth"), n, 100, exclude_nir=True, exclude_fMASK=True
+    )
 
 task.close()

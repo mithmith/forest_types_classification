@@ -1,6 +1,6 @@
+import timm
 import torch
 import torch.nn as nn
-import timm
 
 
 class MobileNetV3_UNet_NIR(nn.Module):
@@ -47,7 +47,7 @@ class MobileNetV3_UNet_NIR(nn.Module):
             setattr(self.encoder, first_layer_name, new_conv)
         else:
             raise ValueError(f"First layer is not a Conv2d layer, found: {type(first_layer)}")
-    
+
     def build_decoder_block(self, in_channels, out_channels):
         """Build a single block of the decoder."""
         return nn.Sequential(

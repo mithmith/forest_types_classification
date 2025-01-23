@@ -1,6 +1,6 @@
+import timm
 import torch
 import torch.nn as nn
-import timm
 
 
 class SKResNeXt50_UNet_NIR_fMASK(nn.Module):
@@ -36,7 +36,7 @@ class SKResNeXt50_UNet_NIR_fMASK(nn.Module):
             padding=conv.padding,
             bias=False,
         )
-        
+
         # Copy weights from the pretrained model for the first 3 channels
         with torch.no_grad():
             new_conv.weight[:, :3, :, :] = conv.weight  # Copy RGB weights

@@ -1,6 +1,6 @@
+import timm
 import torch
 import torch.nn as nn
-import timm
 
 
 class MobileNetV3_UNet(nn.Module):
