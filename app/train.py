@@ -100,7 +100,7 @@ def train_model(
             f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
         )
 
-        self.validate(val_dataset, criterion, batch_size, device)
+        validate(val_dataset, criterion, batch_size, device)
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
