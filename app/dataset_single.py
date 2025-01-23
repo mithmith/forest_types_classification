@@ -173,7 +173,7 @@ class ForestTypesDataset:
                     with open(geojson_mask_path) as f:
                         geojson_dict = json.load(f)
 
-                    mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix)
+                    mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix, crs)
 
                     generated_samples = 0
                     not_found = 0
