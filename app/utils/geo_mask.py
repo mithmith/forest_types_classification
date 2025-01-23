@@ -11,7 +11,7 @@ from loguru import logger
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.transform import Affine
-from shapely.geometry import MultiPolygon, Polygon, mapping
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 from shapely.ops import transform as shapely_transform
 
 
@@ -36,7 +36,7 @@ def mask_to_polygons(mask: np.ndarray) -> list[Polygon]:
     return polygons
 
 
-def mask_from_geojson(geojson_data: dict, mask_shape: tuple[int, int], transform_matrix: Affine) -> np.ndarray:
+def mask_from_geojson(geojson_data: dict, mask_shape: tuple[int, int], transform_matrix: Affine, crs) -> np.ndarray:
     """
     Преобразует GeoJSON с полигонами в объединённую бинарную маску.
 
@@ -51,18 +51,13 @@ def mask_from_geojson(geojson_data: dict, mask_shape: tuple[int, int], transform
     # Преобразуем GeoJSON в GeoDataFrame
     geo_df = gpd.GeoDataFrame.from_features(geojson_data["features"])
 
-    # Обрабатываем каждый полигон в GeoDataFrame
-    # for _, row in tqdm(geo_df.iterrows(), total=geo_df.shape[0]):
-    #     polygon_geo = row["geometry"]
-    #     if polygon_geo is None:
-    #         print(Exception("Внутри Feature нет геометрии"))
-    #         continue
-    #     mask = polygon_to_mask(polygon_geo, mask_shape, transform_matrix)
-    #
-    #     # Объединяем маски, используя максимальное значение (логика ИЛИ для бинарных масок)
-    #     combine_mask = np.maximum(combine_mask, mask)
+    geo_df_crs = geojson_data["crs"]["properties"]["name"].split(":")[-1]
 
-    geometries = [(row["geometry"], 1) for _, row in geo_df.iterrows() if row["geometry"] is not None]
+    if geo_df_crs == "CRS84":
+        geo_df = geo_df.set_crs("EPSG:4326")
+        geo_df = geo_df.to_crs(crs)
+
+    geometries = [(shape(row["geometry"]), 1) for _, row in geo_df.iterrows() if row["geometry"] is not None]
 
     combine_mask = rasterize(
         geometries, out_shape=mask_shape, transform=transform_matrix, fill=0, all_touched=True, dtype=np.uint8
