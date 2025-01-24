@@ -69,12 +69,18 @@ def train_model(
 
                 plt.figure(figsize=(12, 6))
                 plt.subplot(1, 2, 1)
-                model_out_mask = outputs.detach().cpu().squeeze().numpy()
+                if batch_size > 1:
+                    model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]
+                else:
+                    model_out_mask = outputs.detach().cpu().squeeze().numpy()
                 plt.imshow(np.clip(model_out_mask, 0.3, 0.8), cmap="gray")
                 plt.title("Model Output")
 
                 plt.subplot(1, 2, 2)
-                plt.imshow(mask_batch.cpu().squeeze().numpy(), cmap="gray")
+                if batch_size > 1:
+                    plt.imshow(mask_batch.cpu().squeeze().numpy()[0], cmap="gray")
+                else:
+                    plt.imshow(mask_batch.cpu().squeeze().numpy(), cmap="gray")
                 plt.title("Ground Truth Mask")
 
                 if not self.logs_path.exists():
