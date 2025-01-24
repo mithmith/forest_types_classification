@@ -83,9 +83,9 @@ def train_model(
                     plt.imshow(mask_batch.cpu().squeeze().numpy(), cmap="gray")
                 plt.title("Ground Truth Mask")
 
-                if not self.logs_path.exists():
-                    self.logs_path.mkdir(parents=True, exist_ok=True)
-                plt.savefig(self.logs_path / f"train_{epoch + 1}_{i + 1}_{int(avg_loss * 10000)}.png")
+                if not model.logs_path.exists():
+                    model.logs_path.mkdir(parents=True, exist_ok=True)
+                plt.savefig(model.logs_path / f"train_{epoch + 1}_{i + 1}_{int(avg_loss * 10000)}.png")
                 # plt.show()
                 plt.close("all")
             elif (i + 1) % 25 == 0:
@@ -106,7 +106,7 @@ def train_model(
             f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
         )
 
-        self.validate(val_dataset, criterion, batch_size, device)
+        validate(model, val_dataset, criterion, batch_size, device)
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
