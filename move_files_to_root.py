@@ -43,7 +43,7 @@ def move_files_to_root(root_path: Path):
 
 
 if __name__ == "__main__":
-    root_folder = Path(
-        "./Разметка/8.Усыхание_Юг-Беларусь/S2B_MSIL2A_20210808T090559_N0301_R050_T35UPT_20210808T123030.SAFE/"
-    )
-    move_files_to_root(root_folder)
+    # Получаем все папки со снимками Sentinel-2 и перемещаем их в корневую папку для использования
+    root_folder = Path("..\\forest_changes_dataset\\2.Вырубки_Кострома_снимки\\")
+    for folder in root_folder.glob("*.SAFE/"):
+        move_files_to_root(folder)
