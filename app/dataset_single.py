@@ -24,6 +24,7 @@ from xgboost import XGBClassifier
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
 from app.services.base import BoundingBox
+from app.train import load_model, evaluate
 
 warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
@@ -430,9 +431,9 @@ class ForestTypesDataset:
             input_tensor.append(self.create_forest_mask(sample_num))
 
         input_tensor = np.array(input_tensor)
-        model.load_model(model_path)
+        loaded_model = load_model(model, model_path)
 
-        predict_mask = model.evaluate(input_tensor)
+        predict_mask = evaluate(loaded_model, input_tensor)
 
         if visualise:
             plt.figure()
@@ -465,13 +466,13 @@ class ForestTypesDataset:
             input_tensor.append(self.create_forest_mask(sample_num))
 
         input_tensor = np.array(input_tensor)
-        model.load_model(model_path)
+        loaded_model = load_model(model, model_path)
 
         times = []
         for _ in range(num_runs):
             start_time = time.perf_counter()
 
-            predict_mask = model.evaluate(input_tensor)
+            predict_mask = evaluate(loaded_model, input_tensor)
 
             end_time = time.perf_counter()
             times.append(end_time - start_time)
