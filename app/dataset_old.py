@@ -386,7 +386,7 @@ class ForestTypesDataset:
         # Преобразование полигонов в CRS файла tif1
         transformed_polygons = []
         for polygon in coords_list:
-            transformed_geom = transform_geom(coords_crs, coords_crs, shape(polygon).__geo_interface__)
+            transformed_geom = transform_geom(coords_crs, target_crs, shape(polygon).__geo_interface__)
             transformed_polygons.append(transformed_geom)
 
         # Создание бинарной маски размером с изображение
