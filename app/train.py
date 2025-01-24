@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from pathlib import Path
 
 from app.loss import calculate_iou
 
@@ -165,3 +166,37 @@ def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: 
     avg_iou = total_iou / total_samples
     avg_accuracy = total_accuracy / total_samples
     print(f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}")
+
+
+def save_model(model, model_save_path: Path):
+    torch.save(model.state_dict(), model_save_path)
+    print(f"Model saved to {model_save_path}")
+
+
+def load_model(model, model_load_path: Path):
+    model.load_state_dict(torch.load(model_load_path))
+    print(f"Model loaded from {model_load_path}")
+    return model
+
+
+@staticmethod
+def prepare_input(combined_array: np.ndarray) -> torch.Tensor:
+    """
+    Функция для подготовки тензора с 5 каналами (5, H, W) (RGB + NIR + маска).
+
+    Аргументы:
+    - red, green, blue, nir, mask: numpy массивы формы (H, W) для каждого канала
+
+    Возвращает:
+    - torch.Tensor формы (1, 5, H, W) для подачи в модель
+    """
+    # Преобразуем в тензор и добавляем batch размерности (1, 5, H, W)
+    return torch.tensor(combined_array, dtype=torch.float32).unsqueeze(0)
+
+
+def evaluate(model, x1: np.ndarray) -> np.ndarray:
+    model.eval()  # Переключаем модель в режим оценки
+    model.to('cpu')
+    with torch.no_grad():
+        outputs: torch.Tensor = model(prepare_input(x1).to('cpu'))
+        return outputs.detach().cpu().squeeze().numpy()
