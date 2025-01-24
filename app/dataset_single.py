@@ -32,8 +32,8 @@ warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 class ForestTypesDataset:
     def __init__(
         self,
-        geojson_masks_dir: Path,
-        sentinel_root_path: Path,
+        geojson_masks_dir: Path | None = None,
+        sentinel_root_path: Path | None = None,
         dataset_path: Path | None = None,
         forest_model_path: Path | None = None,
     ) -> None:
@@ -48,8 +48,10 @@ class ForestTypesDataset:
         }
         self.sentinel_root = sentinel_root_path
         self.generated_dataset_path = dataset_path
-        self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
-        self.images_files = [f for f in os.listdir(sentinel_root_path)]
+        if geojson_masks_dir is not None and geojson_masks_dir.exists():
+            self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
+        if sentinel_root_path is not None and sentinel_root_path.exists():
+            self.images_files = [f for f in os.listdir(sentinel_root_path)]
         self.dataset_length = 0
         self.forest_model_path = forest_model_path
 
