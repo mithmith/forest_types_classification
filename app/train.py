@@ -10,7 +10,7 @@ from app.loss import calculate_iou
 
 def train_model(
     model: nn.Module, train_dataset, val_dataset, epochs=1, batch_size=1, learning_rate=0.001, device="cuda"
-):
+, exclude_nir=True, exclude_fMASK=True):
     model.to(device)
     criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -23,7 +23,7 @@ def train_model(
 
         batch_inputs, batch_masks = [], []
 
-        for i, (sample, mask) in enumerate(train_dataset.get_next_generated_sample(verbose=False)):
+        for i, (sample, mask) in enumerate(train_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)):
             # Подготовка данных для батча
             batch_inputs.append(torch.tensor(sample, dtype=torch.float32))
             batch_masks.append(torch.tensor(mask.copy(), dtype=torch.float32).unsqueeze(0))
@@ -107,7 +107,7 @@ def train_model(
             f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
         )
 
-        validate(model, val_dataset, criterion, batch_size, device)
+        validate(model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
@@ -115,7 +115,7 @@ def train_model(
     print("Training complete")
 
 
-def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: str):
+def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: str, exclude_nir=True, exclude_fMASK=True):
     """
     Validate the model using the validation dataset.
     Args:
@@ -133,7 +133,7 @@ def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: 
     batch_inputs, batch_masks = [], []
 
     with torch.no_grad():
-        for i, (sample, mask) in enumerate(val_dataset.get_next_generated_sample(verbose=False)):
+        for i, (sample, mask) in enumerate(val_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)):
             # Prepare the data for batching
             batch_inputs.append(torch.tensor(sample, dtype=torch.float32))
             batch_masks.append(torch.tensor(mask.copy(), dtype=torch.float32).unsqueeze(0))

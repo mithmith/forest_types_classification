@@ -54,6 +54,17 @@ models = {'ResNet50_UNet' + damage_prefix: model_ResNet50_UNet,
           'ResNet50_UNet_NIR_fMASK' + damage_prefix: model_ResNet50_UNet_NIR_fMASK}
 
 for model_name, model in models.items():
+
+    if "NIR" in model_name and "fMASK" in model_name:
+        exclude_nir = False
+        exclude_fMASK = False
+    elif "NIR" in model_name:
+        exclude_nir = False
+        exclude_fMASK = True
+    else:
+        exclude_nir = True
+        exclude_fMASK = True
+
     # Training progresses and models paths
     training_process_path = path_prefix.joinpath(f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/")
     model_save_path = path_prefix.joinpath(f"sentinel_forest_types_classification_models/{model_name}/")
@@ -68,7 +79,8 @@ for model_name, model in models.items():
 
     # model.load_model(model_load_path)
     model.logs_path = training_process_path
-    train_model(model, train_dataset=train_dataset, val_dataset=val_dataset, epochs=10, batch_size=4, learning_rate=0.001)
+    train_model(model, train_dataset=train_dataset, val_dataset=val_dataset, epochs=10, batch_size=4, learning_rate=0.001,
+                exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
     save_model(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"))
 
     # Inference test
@@ -76,16 +88,6 @@ for model_name, model in models.items():
     random.shuffle(red_tif_files)
     for filename in red_tif_files[:5]:
         n = filename.stem.split("_")[0]
-
-        if "NIR" in model_name and "fMASK" in model_name:
-            exclude_nir = False
-            exclude_fMASK = False
-        elif "NIR" in model_name:
-            exclude_nir = False
-            exclude_fMASK = True
-        else:
-            exclude_nir = True
-            exclude_fMASK = True
 
         val_dataset.inference_test(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"),
                                    n, 100, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
