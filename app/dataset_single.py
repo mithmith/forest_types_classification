@@ -24,6 +24,7 @@ from xgboost import XGBClassifier
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
 from app.services.base import BoundingBox
+from app.train import load_model, evaluate
 
 warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
@@ -31,8 +32,8 @@ warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 class ForestTypesDataset:
     def __init__(
         self,
-        geojson_masks_dir: Path,
-        sentinel_root_path: Path,
+        geojson_masks_dir: Path | None = None,
+        sentinel_root_path: Path | None = None,
         dataset_path: Path | None = None,
         forest_model_path: Path | None = None,
     ) -> None:
@@ -47,8 +48,10 @@ class ForestTypesDataset:
         }
         self.sentinel_root = sentinel_root_path
         self.generated_dataset_path = dataset_path
-        self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
-        self.images_files = [f for f in os.listdir(sentinel_root_path)]
+        if geojson_masks_dir is not None and geojson_masks_dir.exists():
+            self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
+        if sentinel_root_path is not None and sentinel_root_path.exists():
+            self.images_files = [f for f in os.listdir(sentinel_root_path)]
         self.dataset_length = 0
         self.forest_model_path = forest_model_path
 
@@ -430,9 +433,9 @@ class ForestTypesDataset:
             input_tensor.append(self.create_forest_mask(sample_num))
 
         input_tensor = np.array(input_tensor)
-        model.load_model(model_path)
+        loaded_model = load_model(model, model_path)
 
-        predict_mask = model.evaluate(input_tensor)
+        predict_mask = evaluate(loaded_model, input_tensor)
 
         if visualise:
             plt.figure()
@@ -465,13 +468,13 @@ class ForestTypesDataset:
             input_tensor.append(self.create_forest_mask(sample_num))
 
         input_tensor = np.array(input_tensor)
-        model.load_model(model_path)
+        loaded_model = load_model(model, model_path)
 
         times = []
         for _ in range(num_runs):
             start_time = time.perf_counter()
 
-            predict_mask = model.evaluate(input_tensor)
+            predict_mask = evaluate(loaded_model, input_tensor)
 
             end_time = time.perf_counter()
             times.append(end_time - start_time)
