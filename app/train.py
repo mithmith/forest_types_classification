@@ -1,3 +1,6 @@
+from datetime import datetime
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -5,11 +8,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 from app.loss import calculate_iou
+from config import LOGS_PATH_DIR
 
 
 def train_model(
     model: nn.Module, train_dataset, val_dataset, epochs=1, batch_size=1, learning_rate=0.001, device="cuda"
 ):
+    logs_path = Path(LOGS_PATH_DIR) / f'{datetime.now().strftime("%Y-%m-%d_%H-%M")}'
     model.to(device)
     criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -77,9 +82,9 @@ def train_model(
                 plt.imshow(mask_batch.cpu().squeeze().numpy(), cmap="gray")
                 plt.title("Ground Truth Mask")
 
-                if not self.logs_path.exists():
-                    self.logs_path.mkdir(parents=True, exist_ok=True)
-                plt.savefig(self.logs_path / f"train_{epoch + 1}_{i + 1}_{int(avg_loss * 10000)}.png")
+                if not logs_path.exists():
+                    logs_path.mkdir(parents=True, exist_ok=True)
+                plt.savefig(logs_path / f"train_{epoch + 1}_{i + 1}_{int(avg_loss * 10000)}.png")
                 # plt.show()
                 plt.close("all")
             elif (i + 1) % 25 == 0:
