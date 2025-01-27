@@ -14,6 +14,7 @@ from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
+from shapely.geometry import Polygon, MultiPolygon
 from scipy.ndimage import rotate
 from torchsummary import summary
 from torchview import draw_graph
@@ -36,6 +37,7 @@ class ForestTypesDataset:
         sentinel_root_path: Path | None = None,
         dataset_path: Path | None = None,
         forest_model_path: Path | None = None,
+        crop_bboxes_dir: Path | None = None,
     ) -> None:
         self.image_shape = (512, 512)
         self.bands_regex_list = {
@@ -54,6 +56,7 @@ class ForestTypesDataset:
             self.images_files = [f for f in os.listdir(sentinel_root_path)]
         self.dataset_length = 0
         self.forest_model_path = forest_model_path
+        self.crop_bboxes_dir = crop_bboxes_dir
 
     def __len__(self):
         return self.dataset_length
@@ -150,6 +153,81 @@ class ForestTypesDataset:
         maxy = miny + bbox_height
         return BoundingBox(minx, maxx, miny, maxy, 0, 0)
 
+    def normalize_geojson_coordinates(self, geojson_data, img_width, img_height):
+        """
+        Normalize GeoJSON coordinates and scale them to image dimensions.
+
+        Args:
+            geojson_data (dict): The GeoJSON data.
+            img_width (int): The width of the image.
+            img_height (int): The height of the image.
+
+        Returns:
+            normalized_polygon (shapely.geometry.Polygon): The polygon scaled to image dimensions.
+        """
+        from shapely.geometry import shape
+
+        # Extract the bounds of the GeoJSON data
+        feature = geojson_data["features"][0]
+        geometry = shape(feature["geometry"])
+        geo_bounds = geometry.bounds  # (minx, miny, maxx, maxy)
+
+        # Define min and max longitude/latitude (GeoJSON CRS84)
+        min_lon, min_lat, max_lon, max_lat = geo_bounds
+
+        # Define the normalization function
+        def normalize(coord, min_val, max_val, scale):
+            return (coord - min_val) / (max_val - min_val) * scale
+
+        def normalize_polygon(polygon):
+            normalized_coords = []
+            for lon, lat in polygon.exterior.coords:
+                x = normalize(lon, min_lon, max_lon, img_width)  # Normalize longitude
+                y = normalize(lat, min_lat, max_lat, img_height)  # Normalize latitude
+                normalized_coords.append((x, y))
+            return Polygon(normalized_coords)
+
+        if isinstance(geometry, MultiPolygon):
+            normalized_polygons = [normalize_polygon(poly) for poly in geometry.geoms]
+            normalized_geometry = MultiPolygon(normalized_polygons)
+        elif isinstance(geometry, Polygon):
+            normalized_geometry = normalize_polygon(geometry)
+
+        return normalized_geometry
+
+    def get_random_bbox_within_crop_bbox(self, width: int, height: int, bbox_shape: tuple[int, int],
+                                         normalized_polygon) -> BoundingBox:
+        """
+        Generate a random bounding box constrained by a GeoJSON bounding area.
+
+        Args:
+            width (int): Width of the image.
+            height (int): Height of the image.
+            bbox_shape (tuple[int, int]): Width and height of the bounding box.
+        Returns:
+            BoundingBox: Randomly generated bounding box within the constrained area.
+        """
+
+        # Extract the geometry and get bounds
+        minx, miny, maxx, maxy = normalized_polygon.bounds
+
+        # Convert GeoJSON bounds to image coordinates
+        bbox_width, bbox_height = bbox_shape
+
+        # Ensure the random bounding box fits inside the normalized polygon
+        max_x = max(0, int(maxx) - bbox_width)
+        max_y = max(0, int(maxy) - bbox_height)
+
+        # Generate random coordinates within the constraints
+        rand_x = random.randint(int(minx), max_x) if max_x > minx else int(minx)
+        rand_y = random.randint(int(miny), max_y) if max_y > miny else int(miny)
+
+        # Calculate the bottom-right corner
+        maxx = rand_x + bbox_width
+        maxy = rand_y + bbox_height
+
+        return BoundingBox(rand_x, maxx, rand_y, maxy, 0, 0)
+
     def generate_dataset(self, target_samples: int = 100):
         if self.generated_dataset_path is None:
             raise ValueError("Generate dataset path is required")
@@ -180,8 +258,19 @@ class ForestTypesDataset:
 
                     generated_samples = 0
                     not_found = 0
+                    region_bbox = img_file.split("_")[-2]
+                    if self.crop_bboxes_dir is not None:
+                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + '.geojson')
+                        if image_crop_bbox_path.exists():
+                            with open(image_crop_bbox_path, 'r') as f:
+                                geojson_data = json.load(f)
+                                normalized_polygon = self.normalize_geojson_coordinates(geojson_data, img_width, img_height)
+
                     while generated_samples < samples_per_image:
-                        box = self.get_random_bbox(img_width, img_height, self.image_shape)
+                        if image_crop_bbox_path is not None and image_crop_bbox_path.exists():
+                            box = self.get_random_bbox_within_crop_bbox(img_width, img_height, self.image_shape, normalized_polygon)
+                        else:
+                            box = self.get_random_bbox(img_width, img_height, self.image_shape)
                         mask_region = mask[box.miny : box.maxy, box.minx : box.maxx]
                         if np.count_nonzero(mask_region) <= 1000:
                             not_found += 1
