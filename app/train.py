@@ -1,3 +1,6 @@
+from datetime import datetime
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -6,6 +9,7 @@ import torch.optim as optim
 from pathlib import Path
 
 from app.loss import calculate_iou
+from config import LOGS_PATH_DIR
 
 
 def train_model(
