@@ -1,7 +1,7 @@
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
 
 
 class MobileNetV3_PSPNet(nn.Module):
@@ -25,7 +25,7 @@ class MobileNetV3_PSPNet(nn.Module):
             nn.Conv2d(256, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, self.num_classes, kernel_size=1)
+            nn.Conv2d(128, self.num_classes, kernel_size=1),
         )
 
         # Initialize weights for new layers
@@ -40,7 +40,7 @@ class MobileNetV3_PSPNet(nn.Module):
         """Initialize the weights of the newly added layers."""
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -54,25 +54,28 @@ class MobileNetV3_PSPNet(nn.Module):
 
         # Decoder
         output = self.decoder(ppm_out)
-        output = F.interpolate(output, size=x.size()[2:], mode='bilinear', align_corners=False)  # Resize to input size
+        output = F.interpolate(output, size=x.size()[2:], mode="bilinear", align_corners=False)  # Resize to input size
         return output
 
 
 class PyramidPoolingModule(nn.Module):
     def __init__(self, in_channels, pool_sizes):
         super(PyramidPoolingModule, self).__init__()
-        self.stages = nn.ModuleList([
-            nn.Sequential(
-                nn.AdaptiveAvgPool2d(pool_size),
-                nn.Conv2d(in_channels, in_channels // 4, kernel_size=1),
-                nn.BatchNorm2d(in_channels // 4),
-                nn.ReLU(inplace=True)
-            ) for pool_size in pool_sizes
-        ])
+        self.stages = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.AdaptiveAvgPool2d(pool_size),
+                    nn.Conv2d(in_channels, in_channels // 4, kernel_size=1),
+                    nn.BatchNorm2d(in_channels // 4),
+                    nn.ReLU(inplace=True),
+                )
+                for pool_size in pool_sizes
+            ]
+        )
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels + len(pool_sizes) * (in_channels // 4), in_channels, kernel_size=1),
             nn.BatchNorm2d(in_channels),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
     def forward(self, x):
@@ -80,6 +83,6 @@ class PyramidPoolingModule(nn.Module):
         ppm_outs = [x]
         for stage in self.stages:
             pooled = stage(x)
-            ppm_outs.append(F.interpolate(pooled, size=(h, w), mode='bilinear', align_corners=False))
+            ppm_outs.append(F.interpolate(pooled, size=(h, w), mode="bilinear", align_corners=False))
         ppm_out = torch.cat(ppm_outs, dim=1)
         return self.conv(ppm_out)
