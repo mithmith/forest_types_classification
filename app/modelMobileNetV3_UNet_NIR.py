@@ -23,6 +23,7 @@ class MobileNetV3_UNet_NIR(nn.Module):
 
         # Final output layer
         self.final_conv = nn.Conv2d(32, self.num_classes, kernel_size=1)
+        self.initialize_weights()
 
     def modify_first_layer(self, in_channels: int):
         """Modify the first convolutional layer to accept additional input channels."""
@@ -58,6 +59,15 @@ class MobileNetV3_UNet_NIR(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
+    
+    def initialize_weights(self):
+        """Initialize the weights of the newly added layers."""
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def freeze_rgb_layers(self):
         # Заморозка всех слоев энкодера для RGB

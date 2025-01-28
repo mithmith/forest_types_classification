@@ -22,6 +22,7 @@ class MobileNetV3_UNet(nn.Module):
 
         # Final output layer
         self.final_conv = nn.Conv2d(32, self.num_classes, kernel_size=1)
+        self.initialize_weights()
 
     def build_decoder_block(self, in_channels, out_channels):
         """Build a single block of the decoder."""
@@ -38,6 +39,15 @@ class MobileNetV3_UNet(nn.Module):
         # Заморозка всех слоев энкодера для RGB
         for param in self.encoder.parameters():
             param.requires_grad = False
+
+    def initialize_weights(self):
+        """Initialize the weights of the newly added layers."""
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor):
         # Encoder
