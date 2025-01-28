@@ -1,13 +1,14 @@
 import os
 import random
 from pathlib import Path
+
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
-from app.train import train_model, save_model
 from app.modelResNet50_RGB import ResNet50_UNet
 from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
 from app.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
+from app.train import save_model, train_model
 
 os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
 os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
@@ -49,9 +50,11 @@ model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1)
 model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1)
 
 
-models = {'ResNet50_UNet' + damage_prefix: model_ResNet50_UNet,
-          'ResNet50_UNet_NIR' + damage_prefix: model_ResNet50_UNet_NIR,
-          'ResNet50_UNet_NIR_fMASK' + damage_prefix: model_ResNet50_UNet_NIR_fMASK}
+models = {
+    "ResNet50_UNet" + damage_prefix: model_ResNet50_UNet,
+    "ResNet50_UNet_NIR" + damage_prefix: model_ResNet50_UNet_NIR,
+    "ResNet50_UNet_NIR_fMASK" + damage_prefix: model_ResNet50_UNet_NIR_fMASK,
+}
 
 for model_name, model in models.items():
 
@@ -66,7 +69,9 @@ for model_name, model in models.items():
         exclude_fMASK = True
 
     # Training progresses and models paths
-    training_process_path = path_prefix.joinpath(f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/")
+    training_process_path = path_prefix.joinpath(
+        f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/"
+    )
     model_save_path = path_prefix.joinpath(f"sentinel_forest_types_classification_models/{model_name}/")
     model_load_path = model_save_path.joinpath(f"{model_name}_v{i-1}.pth")
 
@@ -75,12 +80,20 @@ for model_name, model in models.items():
             os.makedirs(path)
 
     # Training
-    task = Task.init(project_name=f'ML-{model_name}', task_name=f'Forest_changes_v{i}', reuse_last_task_id=False)
+    task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
 
     # model.load_model(model_load_path)
     model.logs_path = training_process_path
-    train_model(model, train_dataset=train_dataset, val_dataset=val_dataset, epochs=10, batch_size=4, learning_rate=0.001,
-                exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
+    train_model(
+        model,
+        train_dataset=train_dataset,
+        val_dataset=val_dataset,
+        epochs=10,
+        batch_size=4,
+        learning_rate=0.001,
+        exclude_nir=exclude_nir,
+        exclude_fMASK=exclude_fMASK,
+    )
     save_model(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"))
 
     # Inference test
@@ -89,7 +102,13 @@ for model_name, model in models.items():
     for filename in red_tif_files[:5]:
         n = filename.stem.split("_")[0]
 
-        val_dataset.inference_test(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"),
-                                   n, 100, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
+        val_dataset.inference_test(
+            model,
+            model_save_path.joinpath(f"{model_name}_v{i}.pth"),
+            n,
+            100,
+            exclude_nir=exclude_nir,
+            exclude_fMASK=exclude_fMASK,
+        )
 
     task.close()

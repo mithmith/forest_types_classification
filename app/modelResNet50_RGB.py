@@ -145,4 +145,3 @@ class ResNet50_UNet(nn.Module):
         dec1_out = self.dec1(torch.cat([dec2_out, enc2_out], dim=1))  # 128x128 -> 256x256
         output = self.dec0(torch.cat([dec1_out, enc1_out], dim=1))  # 256x256 -> 512x512
         return self.final_conv(output)
-
