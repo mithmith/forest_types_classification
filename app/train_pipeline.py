@@ -20,6 +20,7 @@ damage_prefix = "_burns"
 # Dataset paths
 dataset_geojson_masks_dir = path_prefix.joinpath(f"forest_changes_dataset/masks{damage_prefix}")
 sentinel_root_dir = path_prefix.joinpath(f"forest_changes_dataset/images{damage_prefix}")
+crop_bboxes_dir = path_prefix.joinpath(f"forest_changes_dataset/crop_bboxes")
 train_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/train")
 val_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/validation")
 
@@ -28,12 +29,14 @@ forest_model_path = Path("../forest_model_v8.dat")
 train_dataset = ForestTypesDataset(
     dataset_geojson_masks_dir,
     sentinel_root_dir,
+    crop_bboxes_dir=crop_bboxes_dir,
     dataset_path=train_path,
     forest_model_path=forest_model_path,
 )
 val_dataset = ForestTypesDataset(
     dataset_geojson_masks_dir,
     sentinel_root_dir,
+    crop_bboxes_dir=crop_bboxes_dir,
     dataset_path=val_path,
     forest_model_path=forest_model_path,
 )
