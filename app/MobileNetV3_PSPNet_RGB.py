@@ -19,7 +19,7 @@ class MobileNetV3_PSPNet(nn.Module):
 
         # Decoder
         self.decoder = nn.Sequential(
-            nn.Conv2d(encoder_channels + 4 * (encoder_channels // 4), 256, kernel_size=3, padding=1),
+            nn.Conv2d(encoder_channels * (encoder_channels // 4), 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 128, kernel_size=3, padding=1),
