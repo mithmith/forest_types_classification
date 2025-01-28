@@ -80,8 +80,6 @@ class ResNet50_UNet(nn.Module):
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
-        self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=3)
-
         # Save intermediate features for skip connections
         self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU
         self.enc2 = nn.Sequential(*list(self.encoder.children())[3:5])  # MaxPool + Layer1
@@ -98,21 +96,7 @@ class ResNet50_UNet(nn.Module):
 
         # Final output layer
         self.final_conv = nn.Conv2d(64, self.num_classes, kernel_size=1)
-
-    def modify_first_layer(self, conv, in_channels: int):
-        """Modify the first convolution layer to accept more channels."""
-        new_conv = nn.Conv2d(
-            in_channels,
-            conv.out_channels,
-            kernel_size=conv.kernel_size,
-            stride=conv.stride,
-            padding=conv.padding,
-            bias=False,
-        )
-        with torch.no_grad():
-            new_conv.weight[:, :3, :, :] = conv.weight  # Copy RGB weights
-            nn.init.kaiming_normal_(new_conv.weight[:, 3:, :, :], mode="fan_out", nonlinearity="relu")
-        return new_conv
+        self.initialize_weights()
 
     def build_decoder_block(self, in_channels, out_channels):
         """Build a single block of the decoder."""
@@ -130,6 +114,14 @@ class ResNet50_UNet(nn.Module):
         for param in self.encoder.parameters():
             param.requires_grad = False
 
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+                
     def forward(self, x):
         # Encoder
         enc1_out = self.enc1(x)  # 512x512 -> 256x256
