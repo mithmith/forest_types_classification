@@ -32,6 +32,7 @@ def train_model(
         total_samples = 0
         total_iou = 0.0
         total_accuracy = 0.0
+        total_precision = 0.0
 
         batch_inputs, batch_masks = [], []
 
@@ -70,6 +71,13 @@ def train_model(
                 accuracy = (pred_mask == mask_batch).float().mean().item()
                 total_accuracy += accuracy
 
+                # Calculate Overall Precision
+                pred_mask = (torch.sigmoid(outputs) > 0.5).float()
+                tp = ((pred_mask == 1) & (mask_batch == 1)).float().sum().item()
+                fp = ((pred_mask == 1) & (mask_batch == 0)).float().sum().item()
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                total_precision += precision
+
                 # Очищаем батчи для следующего набора
                 batch_inputs, batch_masks = [], []
 
@@ -77,9 +85,10 @@ def train_model(
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
+                avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
+                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
                 # Подготовка данных
@@ -131,9 +140,10 @@ def train_model(
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
+                avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
+                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
         avg_loss = running_loss / total_samples
