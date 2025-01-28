@@ -6,17 +6,25 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pathlib import Path
+from loguru import logger
 
-from app.loss import calculate_iou
-from config import LOGS_PATH_DIR
+from app.loss import calculate_iou, iou_loss
 
 
 def train_model(
-    model: nn.Module, train_dataset, val_dataset, epochs=1, batch_size=1, learning_rate=0.001, device="cuda"
-, exclude_nir=True, exclude_fMASK=True):
+    model: nn.Module,
+    train_dataset,
+    val_dataset,
+    epochs=1,
+    batch_size=1,
+    learning_rate=0.001,
+    device="cuda",
+    exclude_nir=True,
+    exclude_fMASK=True,
+):
     model.to(device)
-    criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(epochs):
@@ -24,10 +32,13 @@ def train_model(
         total_samples = 0
         total_iou = 0.0
         total_accuracy = 0.0
+        total_precision = 0.0
 
         batch_inputs, batch_masks = [], []
 
-        for i, (sample, mask) in enumerate(train_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)):
+        for i, (sample, mask) in enumerate(
+            train_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
+        ):
             # Подготовка данных для батча
             batch_inputs.append(torch.tensor(sample, dtype=torch.float32))
             batch_masks.append(torch.tensor(mask.copy(), dtype=torch.float32).unsqueeze(0))
@@ -60,6 +71,13 @@ def train_model(
                 accuracy = (pred_mask == mask_batch).float().mean().item()
                 total_accuracy += accuracy
 
+                # Calculate Overall Precision
+                pred_mask = (torch.sigmoid(outputs) > 0.5).float()
+                tp = ((pred_mask == 1) & (mask_batch == 1)).float().sum().item()
+                fp = ((pred_mask == 1) & (mask_batch == 0)).float().sum().item()
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                total_precision += precision
+
                 # Очищаем батчи для следующего набора
                 batch_inputs, batch_masks = [], []
 
@@ -67,24 +85,32 @@ def train_model(
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
+                avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
+                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
                 # Подготовка данных
                 if batch_size > 1:
                     model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
                     ground_truth_mask = mask_batch.cpu().squeeze().numpy()[0]  # Истинная маска
-                    rgb_image = input_batch.cpu().numpy()[0, :3]  # Первые три слоя (RGB)
+                    rgb_image = input_batch.cpu().squeeze().numpy()[0, :3]  # Первые три слоя (RGB)
                 else:
                     model_out_mask = outputs.detach().cpu().squeeze().numpy()
                     ground_truth_mask = mask_batch.cpu().squeeze().numpy()
-                    rgb_image = input_batch.cpu().numpy()[:3]
+                    rgb_image = input_batch.cpu().squeeze().numpy()[:3]
 
                 # Нормализация RGB-данных для визуализации
+                logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
                 rgb_image = np.transpose(rgb_image, (1, 2, 0))  # Преобразуем в HxWxC
-                rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())  # Нормализация [0, 1]
+                # Нормализация по каждому каналу
+                normalized_rgb = np.zeros_like(rgb_image, dtype=np.float32)  # Создаём пустой массив для нормализации
+                for channel in range(rgb_image.shape[2]):  # По каждому каналу (R, G, B)
+                    channel_data = rgb_image[:, :, channel]
+                    normalized_rgb[:, :, channel] = (channel_data - channel_data.min()) / (
+                        channel_data.max() - channel_data.min() + 1e-6
+                    )  # Добавляем 1e-6 для избежания деления на 0
 
                 # Маска модели с порогом (можно задать другой порог, если нужно)
                 predicted_mask = np.clip(model_out_mask, 0, 1) > 0.5  # Бинаризация предсказанной маски
@@ -100,7 +126,7 @@ def train_model(
 
                 # 2. RGB-изображение + полупрозрачная маска модели
                 plt.subplot(1, 2, 2)
-                plt.imshow(rgb_image)  # RGB-изображение
+                plt.imshow(normalized_rgb)  # RGB-изображение
                 plt.imshow(predicted_mask, cmap="hot", alpha=0.5)  # Полупрозрачная маска модели
                 plt.title("RGB Image + Model Mask")
 
@@ -114,9 +140,10 @@ def train_model(
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
+                avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
+                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
         avg_loss = running_loss / total_samples
@@ -128,7 +155,9 @@ def train_model(
             f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
         )
 
-        validate(model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
+        validate(
+            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK
+        )
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
@@ -136,7 +165,9 @@ def train_model(
     print("Training complete")
 
 
-def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: str, exclude_nir=True, exclude_fMASK=True):
+def validate(
+    model: nn.Module, val_dataset, criterion, batch_size: int, device: str, exclude_nir=True, exclude_fMASK=True
+):
     """
     Validate the model using the validation dataset.
     Args:
@@ -154,7 +185,9 @@ def validate(model: nn.Module, val_dataset, criterion, batch_size: int, device: 
     batch_inputs, batch_masks = [], []
 
     with torch.no_grad():
-        for i, (sample, mask) in enumerate(val_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)):
+        for i, (sample, mask) in enumerate(
+            val_dataset.get_next_generated_sample(verbose=False, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK)
+        ):
             # Prepare the data for batching
             batch_inputs.append(torch.tensor(sample, dtype=torch.float32))
             batch_masks.append(torch.tensor(mask.copy(), dtype=torch.float32).unsqueeze(0))
@@ -217,7 +250,7 @@ def prepare_input(combined_array: np.ndarray) -> torch.Tensor:
 
 def evaluate(model, x1: np.ndarray) -> np.ndarray:
     model.eval()  # Переключаем модель в режим оценки
-    model.to('cpu')
+    model.to("cpu")
     with torch.no_grad():
-        outputs: torch.Tensor = model(prepare_input(x1).to('cpu'))
+        outputs: torch.Tensor = model(prepare_input(x1).to("cpu"))
         return outputs.detach().cpu().squeeze().numpy()

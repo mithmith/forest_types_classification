@@ -2,9 +2,11 @@ import os
 import random
 from pathlib import Path
 
+import torch
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
+from app.MobileNetV3_PSPNet_RGB import MobileNetV3_PSPNet
 from app.modelResNet50_RGB import ResNet50_RGB_Model
 from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model
 from app.utils.veg_index import preprocess_band
@@ -38,30 +40,27 @@ from app.utils.veg_index import preprocess_band
 # print("Sample min/max/avr:\t", np.nanmin(sample), np.nanmax(sample), np.nanmean(sample))
 # print("Mask min/max/avr:\t", np.nanmin(mask), np.nanmax(mask), np.nanmean(mask))
 
-# # 3. ВИЗУАЛИЗАЦИЯ СТРУКТУРЫ МОДЕЛИ:
-# import torch
 
+# # 3. ВИЗУАЛИЗАЦИЯ СТРУКТУРЫ МОДЕЛИ:
 # # Save model summary structure:
 # from torchsummary import summary
 # from torchviz import make_dot
 
-# from app.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
-
-# model = MobileNetV3_UNet_NIR_fMASK(num_classes=1)
-# rnd_sample = torch.randn(1, 5, 512, 512)
-# summary(model, (5, 512, 512), batch_size=1, device="cpu")
+# model = MobileNetV3_PSPNet(num_classes=1)
+# rnd_sample = torch.randn(2, 3, 512, 512)
+# summary(model, (3, 512, 512), batch_size=2, device="cpu")
 # output = model(rnd_sample)
 # dot = make_dot(output, params=dict(model.named_parameters()))
 # # Save or display the generated graph
 # dot.format = "png"
-# dot.render("MobileNetV3_UNet_NIR_fMASK")
+# dot.render("MobileNetV3_PSPNet")
 
 # from torchview import draw_graph
 
 # # Создание графа модели
-# model_graph = draw_graph(model, input_size=[(1, 5, 512, 512)], expand_nested=True)
+# model_graph = draw_graph(model, input_size=[(2, 3, 512, 512)], expand_nested=True)
 # # Сохранение графа в PNG файл
-# model_graph.visual_graph.render(filename="MobileNetV3_UNet_NIR_fMASK model_structure", format="png", cleanup=True)
+# model_graph.visual_graph.render(filename="MobileNetV3_PSPNet model_structure", format="png", cleanup=True)
 # exit()
 
 # Загружаем модель

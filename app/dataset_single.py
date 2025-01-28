@@ -25,7 +25,7 @@ from xgboost import XGBClassifier
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
 from app.services.base import BoundingBox
-from app.train import load_model, evaluate
+from app.train import evaluate, load_model
 
 warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
