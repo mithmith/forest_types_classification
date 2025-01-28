@@ -8,8 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from loguru import logger
 
-from app.loss import calculate_iou
-from config import LOGS_PATH_DIR
+from app.loss import calculate_iou, iou_loss
 
 
 def train_model(
@@ -24,7 +23,8 @@ def train_model(
     exclude_fMASK=True,
 ):
     model.to(device)
-    criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(epochs):
