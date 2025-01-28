@@ -72,22 +72,39 @@ def train_model(
                     f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
                 )
 
-                plt.figure(figsize=(12, 6))
-                plt.subplot(1, 2, 1)
+                # Подготовка данных
                 if batch_size > 1:
-                    model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]
+                    model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
+                    ground_truth_mask = mask_batch.cpu().squeeze().numpy()[0]  # Истинная маска
+                    rgb_image = input_batch.cpu().numpy()[0, :3]  # Первые три слоя (RGB)
                 else:
                     model_out_mask = outputs.detach().cpu().squeeze().numpy()
-                plt.imshow(np.clip(model_out_mask, 0.3, 0.8), cmap="gray")
-                plt.title("Model Output")
+                    ground_truth_mask = mask_batch.cpu().squeeze().numpy()
+                    rgb_image = input_batch.cpu().numpy()[:3]
 
+                # Нормализация RGB-данных для визуализации
+                rgb_image = np.transpose(rgb_image, (1, 2, 0))  # Преобразуем в HxWxC
+                rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())  # Нормализация [0, 1]
+
+                # Маска модели с порогом (можно задать другой порог, если нужно)
+                predicted_mask = np.clip(model_out_mask, 0, 1) > 0.5  # Бинаризация предсказанной маски
+
+                # Построение визуализаций
+                plt.figure(figsize=(12, 6))
+
+                # 1. Черно-белая маска Ground Truth + полупрозрачная маска модели
+                plt.subplot(1, 2, 1)
+                plt.imshow(ground_truth_mask, cmap="gray")  # Черно-белая истинная маска
+                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)  # Полупрозрачная маска модели
+                plt.title("Ground Truth + Model Mask")
+
+                # 2. RGB-изображение + полупрозрачная маска модели
                 plt.subplot(1, 2, 2)
-                if batch_size > 1:
-                    plt.imshow(mask_batch.cpu().squeeze().numpy()[0], cmap="gray")
-                else:
-                    plt.imshow(mask_batch.cpu().squeeze().numpy(), cmap="gray")
-                plt.title("Ground Truth Mask")
+                plt.imshow(rgb_image)  # RGB-изображение
+                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)  # Полупрозрачная маска модели
+                plt.title("RGB Image + Model Mask")
 
+                # Сохранение изображения
                 if not model.logs_path.exists():
                     model.logs_path.mkdir(parents=True, exist_ok=True)
                 plt.savefig(model.logs_path / f"train_{epoch + 1}_{i + 1}_{int(avg_loss * 10000)}.png")
