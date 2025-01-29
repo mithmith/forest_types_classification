@@ -28,10 +28,10 @@ class SKResNeXt50_UNet(nn.Module):
         """Build a single block of the decoder."""
         return nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
 
@@ -39,6 +39,10 @@ class SKResNeXt50_UNet(nn.Module):
         # Заморозка всех слоев энкодера для RGB
         for param in self.encoder.parameters():
             param.requires_grad = False
+        self.encoder.eval()  # Переключаем в режим инференса
+        for m in self.encoder.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.eval()  # BatchNorm теперь использует зафиксированные статистики
 
     def initialize_weights(self):
         """Initialize the weights of the newly added layers."""
