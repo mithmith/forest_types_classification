@@ -39,17 +39,17 @@ class SKResNeXt50_UNet(nn.Module):
         # Заморозка всех слоев энкодера для RGB
         for param in self.encoder.parameters():
             param.requires_grad = False
-        self.encoder.eval()  # Переключаем в режим инференса
+        self.encoder.eval()
         for m in self.encoder.modules():
             if isinstance(m, nn.BatchNorm2d):
-                m.eval()  # BatchNorm теперь использует зафиксированные статистики
+                m.eval()  # Фиксируем веса BatchNorm
 
     def initialize_weights(self):
         """Initialize the weights of the newly added layers."""
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 

@@ -49,10 +49,10 @@ class SKResNeXt50_UNet_NIR_fMASK(nn.Module):
         """Build a single block of the decoder."""
         return nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
+            nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
 
@@ -60,13 +60,17 @@ class SKResNeXt50_UNet_NIR_fMASK(nn.Module):
         # Заморозка всех слоев энкодера для RGB
         for param in self.encoder.parameters():
             param.requires_grad = False
+        self.encoder.eval()
+        for m in self.encoder.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.eval()  # Фиксируем веса BatchNorm
 
     def initialize_weights(self):
         """Initialize the weights of the newly added layers."""
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
