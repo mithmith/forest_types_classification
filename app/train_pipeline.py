@@ -8,21 +8,24 @@ from app.dataset_single import ForestTypesDataset
 from app.modelResNet50_RGB import ResNet50_UNet
 from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
 from app.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
+from app.modelSKResNeXt50_UNet import SKResNeXt50_UNet
+from app.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
+from app.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
 from app.train import save_model, train_model
 
-os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
-os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
-os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
+# os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
+# os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
+# os.environ["GDAL_DRIVER_PATH"] = os.environ["CONDA_PREFIX"] + r"\Library\lib\gdalplugins"
 
 # Prefixes
-path_prefix = Path("G:/Orni_forest/")
-damage_prefix = "_burns"
+path_prefix = Path("D:\\usr\\T1-GIS\\sentinel_forest_types_classification\\")
+damage_prefix = "_drying"
 
 # Dataset paths
-dataset_geojson_masks_dir = path_prefix.joinpath(f"forest_changes_dataset/masks{damage_prefix}")
-sentinel_root_dir = path_prefix.joinpath(f"forest_changes_dataset/images{damage_prefix}")
-train_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/train")
-val_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/validation")
+dataset_geojson_masks_dir = path_prefix / f"forest_changes_dataset/masks{damage_prefix}"
+sentinel_root_dir = path_prefix / f"forest_changes_dataset/images{damage_prefix}"
+train_path = path_prefix / f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/train"
+val_path = path_prefix / f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/validation"
 
 forest_model_path = Path("../forest_model_v8.dat")
 
@@ -45,15 +48,15 @@ val_dataset = ForestTypesDataset(
 
 # Version and model
 i = 1
-model_ResNet50_UNet = ResNet50_UNet(num_classes=1)
-model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1)
-model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1)
+model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1)
+model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1)
+model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1)
 
 
 models = {
-    "ResNet50_UNet" + damage_prefix: model_ResNet50_UNet,
-    "ResNet50_UNet_NIR" + damage_prefix: model_ResNet50_UNet_NIR,
-    "ResNet50_UNet_NIR_fMASK" + damage_prefix: model_ResNet50_UNet_NIR_fMASK,
+    "SKResNeXt50_UNet" + damage_prefix: model_SKResNeXt50_UNet,
+    "SKResNeXt50_UNet_NIR" + damage_prefix: model_SKResNeXt50_UNet_NIR,
+    "SKResNeXt50_UNet_NIR_fMASK" + damage_prefix: model_SKResNeXt50_UNet_NIR_fMASK,
 }
 
 for model_name, model in models.items():
@@ -69,18 +72,18 @@ for model_name, model in models.items():
         exclude_fMASK = True
 
     # Training progresses and models paths
-    training_process_path = path_prefix.joinpath(
-        f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/"
+    training_process_path = (
+        path_prefix / f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/"
     )
-    model_save_path = path_prefix.joinpath(f"sentinel_forest_types_classification_models/{model_name}/")
-    model_load_path = model_save_path.joinpath(f"{model_name}_v{i-1}.pth")
+    model_save_path = path_prefix / f"sentinel_forest_types_classification_models/{model_name}/"
+    model_load_path = model_save_path / f"{model_name}_v{i-1}.pth"
 
     for path in [training_process_path, model_save_path]:
         if not os.path.exists(path):
             os.makedirs(path)
 
-    # Training
-    task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
+    # # Training
+    # task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
 
     # model.load_model(model_load_path)
     model.logs_path = training_process_path
@@ -89,7 +92,7 @@ for model_name, model in models.items():
         train_dataset=train_dataset,
         val_dataset=val_dataset,
         epochs=10,
-        batch_size=4,
+        batch_size=2,
         learning_rate=0.001,
         exclude_nir=exclude_nir,
         exclude_fMASK=exclude_fMASK,
@@ -111,4 +114,4 @@ for model_name, model in models.items():
             exclude_fMASK=exclude_fMASK,
         )
 
-    task.close()
+    # task.close()

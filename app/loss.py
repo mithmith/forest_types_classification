@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 
 def calculate_iou(pred_mask: torch.Tensor, true_mask: torch.Tensor, threshold: float = 0.5) -> float:
     """
@@ -25,7 +25,13 @@ def iou_loss(pred: torch.Tensor, target: torch.Tensor, smooth: float = 1e-6) -> 
     :return: Значение IoU Loss.
     """
     pred = torch.sigmoid(pred)  # Преобразуем логиты в вероятности
+    if np.all(np.isnan(pred.detach().cpu().numpy())): print("pred is NaN")
+    if np.all(np.isnan(target.detach().cpu().numpy())): print("target is NaN")
     intersection = (pred * target).sum(dim=(2, 3))  # Пересечение
+    print(f"intersection={intersection}")
     union = (pred + target - pred * target).sum(dim=(2, 3))  # Объединение
+    print(f"union={union}")
     iou = (intersection + smooth) / (union + smooth)  # IoU
+    print(f"iou={iou}")
+    print(f"loss={1 - iou.mean()}")
     return 1 - iou.mean()  # Возвращаем 1 - IoU

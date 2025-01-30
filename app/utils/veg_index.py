@@ -204,3 +204,27 @@ def calculate_image_data(
 
     stacked_array = np.stack([bands_data[key] for key in bands_list if key in bands_data], axis=0)
     return np.transpose(stacked_array, (1, 2, 0)), (image_shape, transform_matrix, crs)
+
+
+def min_max_normalize_with_clipping(image: np.ndarray, l_percent: int = 2, u_percent: int = 98) -> np.ndarray:
+    """
+    Min-max нормализация изображения с обрезкой крайних значений (по процентилям).
+
+    image: Входное изображение (H, W, C).
+    l_percent: Нижний процентиль для обрезки (по умолчанию 2%).
+    u_percent: Верхний процентиль для обрезки (по умолчанию 98%).
+    return: Нормализованное изображение (float32, значения от 0 до 1).
+    """
+    normalized_image = np.zeros_like(image, dtype=np.float32)  # Пустой массив для нормализованных значений
+
+    for channel in range(image.shape[2]):  # Пробегаем по каждому каналу (R, G, B)
+        channel_data = image[:, :, channel]
+
+        # Вычисляем 2-й и 98-й процентили и нормализуем
+        v_min, v_max = np.percentile(channel_data, [l_percent, u_percent])
+        channel_data_clipped = np.clip(channel_data, v_min, v_max)
+        normalized_image[:, :, channel] = (channel_data_clipped - v_min) / (
+            v_max - v_min + 1e-6
+        )  # 1e-6 для избежания деления на 0
+
+    return normalized_image

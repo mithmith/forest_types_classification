@@ -24,7 +24,8 @@ from xgboost import XGBClassifier
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
 from app.services.base import BoundingBox
-from app.train import evaluate, load_model
+
+# from app.train import evaluate, load_model
 
 warnings.filterwarnings("ignore", category=rasterio.features.ShapeSkipWarning)
 
@@ -52,7 +53,7 @@ class ForestTypesDataset:
             self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
         if sentinel_root_path is not None and sentinel_root_path.exists():
             self.images_files = [f for f in os.listdir(sentinel_root_path)]
-        self.dataset_length = 0
+        self.dataset_length = len(list(self.generated_dataset_path.glob("*_mask.tif")))
         self.forest_model_path = forest_model_path
 
     def __len__(self):
@@ -412,75 +413,75 @@ class ForestTypesDataset:
             # Yield the stacked bands and corresponding mask
             yield bands_stacked, mask
 
-    def predict_sample_from_dataset(
-        self, model, model_path, sample_num: str, exclude_nir=False, exclude_fMASK=False, visualise=False
-    ):
-        features_names = ["red", "green", "blue"]
+    # def predict_sample_from_dataset(
+    #     self, model, model_path, sample_num: str, exclude_nir=False, exclude_fMASK=False, visualise=False
+    # ):
+    #     features_names = ["red", "green", "blue"]
 
-        if not exclude_nir:
-            features_names.append("nir")
+    #     if not exclude_nir:
+    #         features_names.append("nir")
 
-        input_tensor = []
-        for feature_name in features_names:
-            with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
-                input_tensor.append(veg_index.preprocess_band(f.read(1)))
+    #     input_tensor = []
+    #     for feature_name in features_names:
+    #         with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
+    #             input_tensor.append(veg_index.preprocess_band(f.read(1)))
 
-        ground_truth_tensor = []
-        with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
-            ground_truth_tensor.append(f.read(1))
+    #     ground_truth_tensor = []
+    #     with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
+    #         ground_truth_tensor.append(f.read(1))
 
-        if not exclude_fMASK:
-            input_tensor.append(self.create_forest_mask(sample_num))
+    #     if not exclude_fMASK:
+    #         input_tensor.append(self.create_forest_mask(sample_num))
 
-        input_tensor = np.array(input_tensor)
-        loaded_model = load_model(model, model_path)
+    #     input_tensor = np.array(input_tensor)
+    #     loaded_model = load_model(model, model_path)
 
-        predict_mask = evaluate(loaded_model, input_tensor)
+    #     predict_mask = evaluate(loaded_model, input_tensor)
 
-        if visualise:
-            plt.figure()
-            plt.subplot(1, 3, 1)
-            plt.imshow(input_tensor[0], cmap="gray")
-            plt.subplot(1, 3, 2)
-            plt.imshow(predict_mask.clip(0.3, 0.75), cmap="gray")
-            plt.subplot(1, 3, 3)
-            plt.imshow(np.squeeze(ground_truth_tensor, axis=0), cmap="gray")
-            plt.show()
+    #     if visualise:
+    #         plt.figure()
+    #         plt.subplot(1, 3, 1)
+    #         plt.imshow(input_tensor[0], cmap="gray")
+    #         plt.subplot(1, 3, 2)
+    #         plt.imshow(predict_mask.clip(0.3, 0.75), cmap="gray")
+    #         plt.subplot(1, 3, 3)
+    #         plt.imshow(np.squeeze(ground_truth_tensor, axis=0), cmap="gray")
+    #         plt.show()
 
-        return predict_mask
+    #     return predict_mask
 
-    def inference_test(self, model, model_path, sample_num: str, num_runs, exclude_nir=False, exclude_fMASK=False):
-        features_names = ["red", "green", "blue"]
+    # def inference_test(self, model, model_path, sample_num: str, num_runs, exclude_nir=False, exclude_fMASK=False):
+    #     features_names = ["red", "green", "blue"]
 
-        if not exclude_nir:
-            features_names.append("nir")
+    #     if not exclude_nir:
+    #         features_names.append("nir")
 
-        input_tensor = []
-        for feature_name in features_names:
-            with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
-                input_tensor.append(veg_index.preprocess_band(f.read(1)))
+    #     input_tensor = []
+    #     for feature_name in features_names:
+    #         with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
+    #             input_tensor.append(veg_index.preprocess_band(f.read(1)))
 
-        ground_truth_tensor = []
-        with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
-            ground_truth_tensor.append(f.read(1))
+    #     ground_truth_tensor = []
+    #     with rasterio.open(self.generated_dataset_path / f"{sample_num}_mask.tif") as f:
+    #         ground_truth_tensor.append(f.read(1))
 
-        if not exclude_fMASK:
-            input_tensor.append(self.create_forest_mask(sample_num))
+    #     if not exclude_fMASK:
+    #         input_tensor.append(self.create_forest_mask(sample_num))
 
-        input_tensor = np.array(input_tensor)
-        loaded_model = load_model(model, model_path)
+    #     input_tensor = np.array(input_tensor)
+    #     loaded_model = load_model(model, model_path)
 
-        times = []
-        for _ in range(num_runs):
-            start_time = time.perf_counter()
+    #     times = []
+    #     for _ in range(num_runs):
+    #         start_time = time.perf_counter()
 
-            predict_mask = evaluate(loaded_model, input_tensor)
+    #         predict_mask = evaluate(loaded_model, input_tensor)
 
-            end_time = time.perf_counter()
-            times.append(end_time - start_time)
+    #         end_time = time.perf_counter()
+    #         times.append(end_time - start_time)
 
-        avg_time = sum(times) / num_runs
-        print(f"Average inference time: {avg_time:.6f} seconds")
+    #     avg_time = sum(times) / num_runs
+    #     print(f"Average inference time: {avg_time:.6f} seconds")
 
     def model_summary_structure(self, model, name="model", exclude_nir=False, exclude_fMASK=False):
         sample, mask = next(self.get_next_generated_sample(exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK))
