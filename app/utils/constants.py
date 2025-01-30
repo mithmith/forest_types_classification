@@ -76,3 +76,10 @@ INDEX_BANDS: dict[str, list[str]] = {
     "swir1": ["swir1"],
     "swir2": ["swir2"],
 }
+
+CLASS_NAME = {
+    0: {"name": "burns", "threshold": 0.25},
+    1: {"name": "deforestation", "threshold": 0.5},
+    2: {"name": "drying", "threshold": 0.75},
+    3: {"name": "windfalls", "threshold": 1},
+}

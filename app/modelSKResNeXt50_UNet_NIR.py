@@ -49,18 +49,18 @@ class SKResNeXt50_UNet_NIR(nn.Module):
         """Build a single block of the decoder."""
         return nn.Sequential(
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
-            nn.InstanceNorm2d(out_channels),
+            # nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.InstanceNorm2d(out_channels),
+            # nn.InstanceNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
 
     def freeze_rgb_layers(self):
         # Заморозка всех слоев энкодера для RGB
-        for param in self.encoder.parameters():
-            param.requires_grad = False
-        self.encoder.eval()
+        # for param in self.encoder.parameters():
+        #     param.requires_grad = False
+        # self.encoder.eval()
         for m in self.encoder.modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.eval()  # Фиксируем веса BatchNorm
@@ -68,15 +68,22 @@ class SKResNeXt50_UNet_NIR(nn.Module):
     def initialize_weights(self):
         """Initialize the weights of the newly added layers."""
         for m in self.modules():
-            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 if m.weight is not None:
                     nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor):
         # Encoder
         enc_outs = self.encoder(x)  # Получаем фичи с уровней энкодера
+        enc_outs = [torch.clamp(out, min=0, max=1e5) for out in enc_outs]
 
         # Decoder with skip connections
         dec4_out = self.dec4(enc_outs[4])  # 16x16 -> 32x32
@@ -84,4 +91,7 @@ class SKResNeXt50_UNet_NIR(nn.Module):
         dec2_out = self.dec2(torch.cat([dec3_out, enc_outs[2]], dim=1))  # 64x64 -> 128x128
         dec1_out = self.dec1(torch.cat([dec2_out, enc_outs[1]], dim=1))  # 128x128 -> 256x256
         output = self.dec0(torch.cat([dec1_out, enc_outs[0]], dim=1))  # 256x256 -> 512x512
-        return self.final_conv(output)
+        decoder_output = torch.clamp(output, min=-1e5, max=1e5)
+        decoder_output = decoder_output / (torch.max(decoder_output) + 1e-6)
+        output = self.final_conv(decoder_output)
+        return output
