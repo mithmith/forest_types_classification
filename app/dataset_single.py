@@ -10,7 +10,6 @@ from typing import Any, Generator
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-from osgeo import gdal
 from loguru import logger
 from rasterio.features import Affine, bounds
 from rasterio.windows import Window
@@ -563,14 +562,8 @@ class ForestTypesDataset:
             features_names.append("nir")
 
         input_tensor = []
-        output_img = []
         for feature_name in features_names:
             with rasterio.open(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif") as f:
-                if feature_name != "nir":
-                    in_ds = gdal.OpenEx(self.generated_dataset_path / f"{sample_num}_{feature_name}.tif")
-                    out_ds = gdal.Translate('/vsimem/in_memory_output.tif', in_ds)
-                    out_arr = out_ds.ReadAsArray()
-                    output_img.append(out_arr)
                 input_tensor.append(veg_index.preprocess_band(f.read(1)))
 
         ground_truth_tensor = []
@@ -586,32 +579,13 @@ class ForestTypesDataset:
         predict_mask = evaluate(loaded_model, input_tensor)
 
         if visualise:
-            output_img = np.transpose(output_img, (1, 2, 0))
-            normalized_rgb = np.zeros_like(output_img, dtype=np.float32)  # Создаём пустой массив для нормализации
-            for channel in range(output_img.shape[2]):  # По каждому каналу (R, G, B)
-                channel_data = output_img[:, :, channel]
-                normalized_rgb[:, :, channel] = (channel_data - channel_data.min()) / (
-                        channel_data.max() - channel_data.min() + 1e-6
-                )  # Добавляем 1e-6 для избежания деления на 0
-            # Increase brightness by scaling up values (factor 1.5 can be adjusted)
-            brightness_factor = 3
-            brightened_rgb = np.clip(normalized_rgb * brightness_factor, 0, 1)
-
-            plt.figure(figsize=(12, 6))
+            plt.figure()
             plt.subplot(1, 3, 1)
-            plt.imshow(brightened_rgb)
-            plt.imshow(predict_mask.clip(0.3, 0.75), cmap="hot", alpha=0.5)
-            plt.title("RGB Image + Model Mask")
+            plt.imshow(input_tensor[0], cmap="gray")
             plt.subplot(1, 3, 2)
-            plt.imshow(brightened_rgb)
-            plt.imshow(np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75), cmap="hot", alpha=0.5)
-            plt.title("RGB Image + Ground Truth Mask")
+            plt.imshow(predict_mask.clip(0.3, 0.75), cmap="gray")
             plt.subplot(1, 3, 3)
-            ground_truth = np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75)
-            plt.imshow(ground_truth, cmap="grey")
-            plt.imshow(predict_mask.clip(0.3, 0.75), cmap="hot", alpha=0.5)
-            plt.title("Ground Truth Mask + Model Mask")
-            plt.tight_layout()
+            plt.imshow(np.squeeze(ground_truth_tensor, axis=0), cmap="gray")
             plt.show()
 
         return predict_mask
