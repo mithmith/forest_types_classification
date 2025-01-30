@@ -55,7 +55,7 @@ class ForestTypesDataset:
             self.geojson_files = list(geojson_masks_dir.glob("*.geojson"))
         if sentinel_root_path is not None and sentinel_root_path.exists():
             self.images_files = [f for f in os.listdir(sentinel_root_path)]
-        self.dataset_length = 0
+        self.dataset_length = len(list(self.generated_dataset_path.glob("*_mask.tif")))
         self.forest_model_path = forest_model_path
         self.crop_bboxes_dir = crop_bboxes_dir
 

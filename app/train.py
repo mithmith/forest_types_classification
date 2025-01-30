@@ -8,13 +8,15 @@ import torch.nn as nn
 import torch.optim as optim
 from loguru import logger
 
+from app.dataset_single import ForestTypesDataset
 from app.loss import calculate_iou, iou_loss
+from app.utils.veg_index import min_max_normalize_with_clipping
 
 
 def train_model(
     model: nn.Module,
-    train_dataset,
-    val_dataset,
+    train_dataset: ForestTypesDataset,
+    val_dataset: ForestTypesDataset,
     epochs=1,
     batch_size=1,
     learning_rate=0.001,
@@ -26,6 +28,11 @@ def train_model(
     criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     # criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    logger.debug(f"Dataset length: {len(train_dataset)}")
+
+    for m in model.modules():
+        if isinstance(m, torch.nn.BatchNorm2d):
+            m.requires_grad_(False)
 
     for epoch in range(epochs):
         running_loss = 0.0
@@ -49,6 +56,10 @@ def train_model(
                 input_batch = torch.stack(batch_inputs).to(device)
                 mask_batch = torch.stack(batch_masks).to(device)
 
+                print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
+                if torch.isnan(input_batch).any() or torch.isinf(input_batch).any():
+                    print("❌ ERROR: input_batch содержит NaN или inf!")
+
                 optimizer.zero_grad()
 
                 # Forward pass
@@ -56,8 +67,18 @@ def train_model(
                 loss = criterion(outputs, mask_batch)
 
                 # Backward pass and optimization
+                # for name, param in model.named_parameters():
+                #     if param.grad is not None:
+                #         max_grad = param.grad.abs().max().item()
+                #         if max_grad > 1e5:  # Градиенты слишком большие
+                #             print(f"❌ WARNING: Взрыв градиентов в {name}: {max_grad}")
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
+
+                for name, param in model.named_parameters():
+                    if param.grad is not None and torch.isnan(param.grad).any():
+                        print(f"❌ WARNING: NaN в градиентах {name}")
 
                 running_loss += loss.item()
                 total_samples += 1
@@ -65,6 +86,7 @@ def train_model(
                 # Calculate IoU
                 iou = calculate_iou(torch.sigmoid(outputs), mask_batch)
                 total_iou += iou
+                logger.debug(f"iou: {iou}, avr iou: {total_iou / total_samples}, total_samples: {total_samples}")
 
                 # Calculate Overall Accuracy
                 pred_mask = (torch.sigmoid(outputs) > 0.5).float()
@@ -81,7 +103,7 @@ def train_model(
                 # Очищаем батчи для следующего набора
                 batch_inputs, batch_masks = [], []
 
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 10 == 0:
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
@@ -103,31 +125,23 @@ def train_model(
 
                 # Нормализация RGB-данных для визуализации
                 logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
-                rgb_image = np.transpose(rgb_image, (1, 2, 0))  # Преобразуем в HxWxC
-                # Нормализация по каждому каналу
-                normalized_rgb = np.zeros_like(rgb_image, dtype=np.float32)  # Создаём пустой массив для нормализации
-                for channel in range(rgb_image.shape[2]):  # По каждому каналу (R, G, B)
-                    channel_data = rgb_image[:, :, channel]
-                    normalized_rgb[:, :, channel] = (channel_data - channel_data.min()) / (
-                        channel_data.max() - channel_data.min() + 1e-6
-                    )  # Добавляем 1e-6 для избежания деления на 0
-
-                # Маска модели с порогом (можно задать другой порог, если нужно)
-                predicted_mask = np.clip(model_out_mask, 0, 1) > 0.5  # Бинаризация предсказанной маски
+                normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)))
+                predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
+                rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
 
                 # Построение визуализаций
                 plt.figure(figsize=(12, 6))
 
                 # 1. Черно-белая маска Ground Truth + полупрозрачная маска модели
                 plt.subplot(1, 2, 1)
-                plt.imshow(ground_truth_mask, cmap="gray")  # Черно-белая истинная маска
-                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)  # Полупрозрачная маска модели
+                plt.imshow(ground_truth_mask, cmap="gray")
+                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
                 plt.title("Ground Truth + Model Mask")
 
                 # 2. RGB-изображение + полупрозрачная маска модели
                 plt.subplot(1, 2, 2)
-                plt.imshow(normalized_rgb)  # RGB-изображение
-                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)  # Полупрозрачная маска модели
+                plt.imshow(rgb_uint8)
+                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
                 plt.title("RGB Image + Model Mask")
 
                 # Сохранение изображения
@@ -149,10 +163,11 @@ def train_model(
         avg_loss = running_loss / total_samples
         avg_iou = total_iou / total_samples
         avg_accuracy = total_accuracy / total_samples
+        avg_precision = total_precision / total_samples
 
         print(
             f"Epoch [{epoch + 1}/{epochs}],"
-            f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}"
+            f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
         )
 
         validate(
@@ -166,7 +181,13 @@ def train_model(
 
 
 def validate(
-    model: nn.Module, val_dataset, criterion, batch_size: int, device: str, exclude_nir=True, exclude_fMASK=True
+    model: nn.Module,
+    val_dataset: ForestTypesDataset,
+    criterion,
+    batch_size: int,
+    device: str,
+    exclude_nir=True,
+    exclude_fMASK=True,
 ):
     """
     Validate the model using the validation dataset.
@@ -181,6 +202,7 @@ def validate(
     total_samples = 0
     total_iou = 0.0
     total_accuracy = 0.0
+    total_precision = 0.0
 
     batch_inputs, batch_masks = [], []
 
@@ -213,13 +235,23 @@ def validate(
                 accuracy = (pred_mask == mask_batch).float().mean().item()
                 total_accuracy += accuracy
 
+                # Calculate Overall Precision
+                pred_mask = (torch.sigmoid(outputs) > 0.5).float()
+                tp = ((pred_mask == 1) & (mask_batch == 1)).float().sum().item()
+                fp = ((pred_mask == 1) & (mask_batch == 0)).float().sum().item()
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                total_precision += precision
+
                 # Clear batches
                 batch_inputs, batch_masks = [], []
 
     avg_loss = running_loss / total_samples
     avg_iou = total_iou / total_samples
     avg_accuracy = total_accuracy / total_samples
-    print(f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}")
+    avg_precision = total_precision / total_samples
+    print(
+        f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+    )
 
 
 def save_model(model, model_save_path: Path):
