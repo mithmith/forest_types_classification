@@ -63,28 +63,28 @@ class SKResNeXt50_UNet(nn.Module):
         # Encoder
         enc_outs = self.encoder(x)  # Получаем фичи с уровней энкодера
         enc_outs = [torch.clamp(out, min=0, max=1e5) for out in enc_outs]
-        # Проверяем слои энкодера
-        for i, enc in enumerate(enc_outs):
-            print(f"enc_outs[{i}] min: {enc.min().item()}, max: {enc.max().item()}")
+        # # Проверяем слои энкодера
+        # for i, enc in enumerate(enc_outs):
+        #     print(f"enc_outs[{i}] min: {enc.min().item()}, max: {enc.max().item()}")
 
         # Decoder with skip connections
         dec4_out = self.dec4(enc_outs[4])  # 16x16 -> 32x32
-        print(f"dec4_out min: {dec4_out.min().item()}, max: {dec4_out.max().item()}")
+        # print(f"dec4_out min: {dec4_out.min().item()}, max: {dec4_out.max().item()}")
 
         dec3_out = self.dec3(torch.cat([dec4_out, enc_outs[3]], dim=1))  # 32x32 -> 64x64
-        print(f"dec3_out min: {dec3_out.min().item()}, max: {dec3_out.max().item()}")
+        # print(f"dec3_out min: {dec3_out.min().item()}, max: {dec3_out.max().item()}")
 
         dec2_out = self.dec2(torch.cat([dec3_out, enc_outs[2]], dim=1))  # 64x64 -> 128x128
-        print(f"dec2_out min: {dec2_out.min().item()}, max: {dec2_out.max().item()}")
+        # print(f"dec2_out min: {dec2_out.min().item()}, max: {dec2_out.max().item()}")
 
         dec1_out = self.dec1(torch.cat([dec2_out, enc_outs[1]], dim=1))  # 128x128 -> 256x256
-        print(f"dec1_out min: {dec1_out.min().item()}, max: {dec1_out.max().item()}")
+        # print(f"dec1_out min: {dec1_out.min().item()}, max: {dec1_out.max().item()}")
 
         output = self.dec0(torch.cat([dec1_out, enc_outs[0]], dim=1))  # 256x256 -> 512x512
-        print(f"Output перед финальным conv: min={output.min().item()}, max={output.max().item()}")
+        # print(f"Output перед финальным conv: min={output.min().item()}, max={output.max().item()}")
 
         decoder_output = torch.clamp(output, min=-1e5, max=1e5)
         decoder_output = decoder_output / (torch.max(decoder_output) + 1e-6)
         output = self.final_conv(decoder_output)
-        print(f"Output после final_conv: min={output.min().item()}, max={output.max().item()}")
+        # print(f"Output после final_conv: min={output.min().item()}, max={output.max().item()}")
         return output

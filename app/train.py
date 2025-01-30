@@ -67,11 +67,11 @@ def train_model(
                 loss = criterion(outputs, mask_batch)
 
                 # Backward pass and optimization
-                for name, param in model.named_parameters():
-                    if param.grad is not None:
-                        max_grad = param.grad.abs().max().item()
-                        if max_grad > 1e5:  # Градиенты слишком большие
-                            print(f"❌ WARNING: Взрыв градиентов в {name}: {max_grad}")
+                # for name, param in model.named_parameters():
+                #     if param.grad is not None:
+                #         max_grad = param.grad.abs().max().item()
+                #         if max_grad > 1e5:  # Градиенты слишком большие
+                #             print(f"❌ WARNING: Взрыв градиентов в {name}: {max_grad}")
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
