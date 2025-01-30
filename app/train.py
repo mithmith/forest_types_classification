@@ -23,8 +23,8 @@ def train_model(
     exclude_fMASK=True,
 ):
     model.to(device)
-    # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
-    criterion = iou_loss
+    criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    # criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(epochs):
