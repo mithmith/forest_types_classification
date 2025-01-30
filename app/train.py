@@ -8,15 +8,14 @@ import torch.nn as nn
 import torch.optim as optim
 from loguru import logger
 
-from app.dataset_single import ForestTypesDataset
 from app.loss import calculate_iou, iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
 
 def train_model(
     model: nn.Module,
-    train_dataset: ForestTypesDataset,
-    val_dataset: ForestTypesDataset,
+    train_dataset,
+    val_dataset,
     epochs=1,
     batch_size=1,
     learning_rate=0.001,
@@ -25,10 +24,10 @@ def train_model(
     exclude_fMASK=True,
 ):
     model.to(device)
-    criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
-    # criterion = iou_loss
+    # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
+    criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    logger.debug(f"Dataset length: {len(train_dataset)}")
+    # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     for m in model.modules():
         if isinstance(m, torch.nn.BatchNorm2d):
@@ -56,7 +55,7 @@ def train_model(
                 input_batch = torch.stack(batch_inputs).to(device)
                 mask_batch = torch.stack(batch_masks).to(device)
 
-                print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
+                # print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
                 if torch.isnan(input_batch).any() or torch.isinf(input_batch).any():
                     print("❌ ERROR: input_batch содержит NaN или inf!")
 
@@ -86,7 +85,7 @@ def train_model(
                 # Calculate IoU
                 iou = calculate_iou(torch.sigmoid(outputs), mask_batch)
                 total_iou += iou
-                logger.debug(f"iou: {iou}, avr iou: {total_iou / total_samples}, total_samples: {total_samples}")
+                # logger.debug(f"iou: {iou}, avr iou: {total_iou / total_samples}, total_samples: {total_samples}")
 
                 # Calculate Overall Accuracy
                 pred_mask = (torch.sigmoid(outputs) > 0.5).float()
@@ -124,7 +123,7 @@ def train_model(
                     rgb_image = input_batch.cpu().squeeze().numpy()[:3]
 
                 # Нормализация RGB-данных для визуализации
-                logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
+                # logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
                 normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)))
                 predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
                 rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
@@ -182,7 +181,7 @@ def train_model(
 
 def validate(
     model: nn.Module,
-    val_dataset: ForestTypesDataset,
+    val_dataset,
     criterion,
     batch_size: int,
     device: str,
@@ -192,7 +191,7 @@ def validate(
     """
     Validate the model using the validation dataset.
     Args:
-        val_dataset (ForestTypesDataset): Dataset for validation.
+        val_dataset: Dataset for validation.
         criterion: Loss function.
         batch_size (int): Batch size for validation.
         device (str): Device to use for validation ('cuda' or 'cpu').
