@@ -8,6 +8,9 @@ from app.dataset_single import ForestTypesDataset
 from app.modelResNet50_RGB import ResNet50_UNet
 from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
 from app.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
+from app.modelSKResNeXt50_UNet import SKResNeXt50_UNet
+from app.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
+from app.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
 from app.train import save_model, train_model
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
@@ -49,15 +52,15 @@ val_dataset = ForestTypesDataset(
 
 # Version and model
 i = 1
-model_ResNet50_UNet = ResNet50_UNet(num_classes=1)
-model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1)
-model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1)
+model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1)
+model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1)
+model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1)
 
 
 models = {
-    "ResNet50_UNet" + damage_prefix: model_ResNet50_UNet,
-    "ResNet50_UNet_NIR" + damage_prefix: model_ResNet50_UNet_NIR,
-    "ResNet50_UNet_NIR_fMASK" + damage_prefix: model_ResNet50_UNet_NIR_fMASK,
+    "SKResNeXt50_UNet" + damage_prefix: model_SKResNeXt50_UNet,
+    "SKResNeXt50_UNet_NIR" + damage_prefix: model_SKResNeXt50_UNet_NIR,
+    "SKResNeXt50_UNet_NIR_fMASK" + damage_prefix: model_SKResNeXt50_UNet_NIR_fMASK,
 }
 
 for model_name, model in models.items():
@@ -84,7 +87,7 @@ for model_name, model in models.items():
             os.makedirs(path)
 
     # Training
-    task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
+    # task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
 
     # model.load_model(model_load_path)
     model.logs_path = training_process_path
@@ -115,4 +118,4 @@ for model_name, model in models.items():
             exclude_fMASK=exclude_fMASK,
         )
 
-    task.close()
+    # task.close()
