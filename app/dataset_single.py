@@ -12,10 +12,10 @@ import numpy as np
 import rasterio
 from osgeo import gdal
 from loguru import logger
-from rasterio.features import Affine, bounds
+from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
-from shapely.geometry import Polygon, MultiPolygon, shape, box
+from shapely.geometry import Polygon, MultiPolygon, shape
 from scipy.ndimage import rotate
 from torchsummary import summary
 from torchview import draw_graph
@@ -117,7 +117,6 @@ class ForestTypesDataset:
         transform_matrix: Affine,
         target_crs: str,
         output_tif_path: Path,
-        geojson_data,
     ):
         # Сохранение маски в GeoTIFF
         mask_profile = {
@@ -130,59 +129,6 @@ class ForestTypesDataset:
             "transform": transform_matrix,
         }
 
-        import geopandas as gpd
-
-        # Calculate the bounds of the mask based on its spatial extent
-        rows, cols = np.nonzero(mask)  # Find non-zero values in the mask
-        if len(rows) == 0 or len(cols) == 0:
-            raise ValueError("Mask is empty or contains no non-zero values.")
-
-        min_row, max_row = rows.min(), rows.max()
-        min_col, max_col = cols.min(), cols.max()
-
-        # Use the transform matrix to calculate the bounding box in spatial coordinates
-        x_min, y_min = transform_matrix * (min_col, max_row + 1)  # Bottom-left corner
-        x_max, y_max = transform_matrix * (max_col + 1, min_row)  # Top-right corner
-
-        # Create a bounding box for the mask
-        raster_geom = box(x_min, y_min, x_max, y_max)
-
-        feature = geojson_data["features"][0]
-        geometry = shape(feature["geometry"])
-
-        gdf = gpd.GeoDataFrame(geometry=[geometry], crs="EPSG:4326")
-        gdf = gdf.to_crs(target_crs)
-
-        fig, ax = plt.subplots(figsize=(8, 8))
-
-        x, y = gdf.geometry.iloc[0].exterior.xy  # Exterior coordinates
-        ax.fill(x, y, alpha=0.5, fc="blue", ec="black", label="Polygon")
-
-        for interior in gdf.geometry.iloc[0].interiors:
-            x, y = interior.xy
-            ax.plot(x, y, color="red", label="Interior Hole")
-
-        # Add labels and legend
-        ax.set_title("Geometry Visualization")
-        ax.legend()
-        ax.set_xlabel("X Coordinates")
-        ax.set_ylabel("Y Coordinates")
-
-        x, y = raster_geom.exterior.xy  # Exterior coordinates
-        ax.fill(x, y, alpha=0.5, fc="blue", ec="black", label="Polygon_2")
-
-        for interior in raster_geom.interiors:
-            x, y = interior.xy
-            ax.plot(x, y, color="red", label="Interior Hole")
-
-        # Show the plot
-        plt.grid(True)
-        plt.show()
-
-        if not gdf.geometry.iloc[0].contains(raster_geom):
-            logger.info("The mask's spatial extent does not fit within the GeoJSON geometry.")
-            return
-        # Save the mask as a GeoTIFF
         with rasterio.open(output_tif_path, "w", **mask_profile) as dst:
             dst.write(mask, 1)
 
@@ -339,14 +285,14 @@ class ForestTypesDataset:
                         )
 
                         self.save_mask(
-                            mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path, geojson_data
+                            mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path
                         )
 
                         for band_key, band_regex in self.bands_regex_list.items():
                             band_path = self.get_band_images(self.sentinel_root / img_file, band_regex)
                             if band_path.exists():
                                 crop_output_path = self.generated_dataset_path / f"{rnd_num}_{band_key}.tif"
-                                # self.save_cropped_region(band_path, box, crop_output_path)
+                                self.save_cropped_region(band_path, box, crop_output_path)
 
                         generated_samples += 1
                         total_samples += 1
