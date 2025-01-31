@@ -20,10 +20,12 @@ from app.utils.veg_index import preprocess_band
 
 # dataset_geojson_masks_dir = Path("G:/Orni_forest/forest_changes_dataset/masks")
 # sentinel_root_dir = Path("G:/Orni_forest/forest_changes_dataset/images")
+# forest_model_path = Path("../forest_model_v8.dat")
 # train_dataset = ForestTypesDataset(
 #     dataset_geojson_masks_dir,
 #     sentinel_root_dir,
 #     dataset_path=Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train"),
+#     forest_model_path=forest_model_path,
 # )
 # val_dataset = ForestTypesDataset(
 #     dataset_geojson_masks_dir,
