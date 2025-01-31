@@ -87,7 +87,7 @@ def predict_sample_from_dataset(
             plt.savefig(save_path)
 
         print(f"Evaluation result saved to: {save_path}")
-        plt.close()
+        plt.close("all")
 
     return predict_mask
 

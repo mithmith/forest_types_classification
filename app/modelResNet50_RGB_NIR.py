@@ -78,7 +78,7 @@ class ResNet50_UNet_NIR(nn.Module):
 
         # Single ResNet encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        # self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=4)
 
