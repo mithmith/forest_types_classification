@@ -5,13 +5,17 @@ from pathlib import Path
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
-from app.modelResNet50_RGB import ResNet50_UNet
-from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
-from app.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
+from app.modelMobileNetV3_UNet import MobileNetV3_UNet
+from app.modelMobileNetV3_UNet_NIR import MobileNetV3_UNet_NIR
+from app.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
+from app.modelResNet50_RGB import ResNet50_RGB_Model, ResNet50_UNet
+from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model, ResNet50_UNet_NIR
+from app.modelResNet50_RGB_NIR_fMASK import ResNet50_RGB_NIR_fMASK_Model, ResNet50_UNet_NIR_fMASK
 from app.modelSKResNeXt50_UNet import SKResNeXt50_UNet
 from app.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
 from app.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
-from app.train import save_model, train_model
+from app.train import save_model, train_model, load_model
+import evaluate
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
 # os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
@@ -52,12 +56,32 @@ val_dataset = ForestTypesDataset(
 
 # Version and model
 i = 1
+model_MobileNetV3_UNet = MobileNetV3_UNet(num_classes=1)
+model_MobileNetV3_UNet_NIR = MobileNetV3_UNet_NIR(num_classes=1)
+model_MobileNetV3_UNet_NIR_fMASK = MobileNetV3_UNet_NIR_fMASK(num_classes=1)
+
+model_ResNet50_UNet = ResNet50_UNet(num_classes=1)
+model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1)
+model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1)
+
+model_ResNet50_RGB_Model = ResNet50_RGB_Model(num_classes=1)
+model_ResNet50_RGB_NIR_Model = ResNet50_RGB_NIR_Model(num_classes=1)
+model_ResNet50_RGB_NIR_fMASK_Model = ResNet50_RGB_NIR_fMASK_Model(num_classes=1)
+
 model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1)
 model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1)
 model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1)
 
-
 models = {
+    "MobileNetV3_UNet" + damage_prefix: model_MobileNetV3_UNet,
+    "MobileNetV3_UNet_NIR" + damage_prefix: model_MobileNetV3_UNet_NIR,
+    "MobileNetV3_UNet_NIR_fMASK" + damage_prefix: model_MobileNetV3_UNet_NIR_fMASK,
+    "ResNet50_UNet" + damage_prefix: model_ResNet50_UNet,
+    "ResNet50_UNet_NIR" + damage_prefix: model_ResNet50_UNet_NIR,
+    "ResNet50_UNet_NIR_fMASK" + damage_prefix: model_ResNet50_UNet_NIR_fMASK,
+    "ResNet50_RGB_Model" + damage_prefix: model_ResNet50_RGB_Model,
+    "ResNet50_RGB_NIR_Model" + damage_prefix: model_ResNet50_RGB_NIR_Model,
+    "ResNet50_RGB_NIR_fMASK_Model" + damage_prefix: model_ResNet50_RGB_NIR_fMASK_Model,
     "SKResNeXt50_UNet" + damage_prefix: model_SKResNeXt50_UNet,
     "SKResNeXt50_UNet_NIR" + damage_prefix: model_SKResNeXt50_UNet_NIR,
     "SKResNeXt50_UNet_NIR_fMASK" + damage_prefix: model_SKResNeXt50_UNet_NIR_fMASK,
@@ -77,26 +101,27 @@ for model_name, model in models.items():
 
     # Training progresses and models paths
     training_process_path = (
-        path_prefix / f"sentinel_forest_types_classification_training_process/{model_name}/train_progress_v{i}/"
+        path_prefix / f"forest_types_classification_training_process/{model_name}/train_progress_v{i}/"
     )
-    model_save_path = path_prefix / f"sentinel_forest_types_classification_models/{model_name}/"
+    model_save_path = path_prefix / f"forest_types_classification_models/{model_name}/"
     model_load_path = model_save_path / f"{model_name}_v{i-1}.pth"
+    evaluation_dir = training_process_path / "evaluation_results/"
 
-    for path in [training_process_path, model_save_path]:
+    for path in [training_process_path, model_save_path, evaluation_dir]:
         if not os.path.exists(path):
             os.makedirs(path)
 
     # Training
     # task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
 
-    # model.load_model(model_load_path)
+    # model = load_model(model, model_load_path)
     model.logs_path = training_process_path
     train_model(
         model,
         train_dataset=train_dataset,
         val_dataset=val_dataset,
         epochs=10,
-        batch_size=4,
+        batch_size=2,
         learning_rate=0.001,
         exclude_nir=exclude_nir,
         exclude_fMASK=exclude_fMASK,
@@ -109,13 +134,27 @@ for model_name, model in models.items():
     for filename in red_tif_files[:5]:
         n = filename.stem.split("_")[0]
 
-        val_dataset.inference_test(
+        evaluate.inference_test(
             model,
             model_save_path.joinpath(f"{model_name}_v{i}.pth"),
             n,
             100,
+            val_path,
+            forest_model_path,
             exclude_nir=exclude_nir,
             exclude_fMASK=exclude_fMASK,
+        )
+
+        evaluate.predict_sample_from_dataset(
+            model,
+            model_save_path.joinpath(f"{model_name}_v{i}.pth"),
+            n,
+            val_path,
+            forest_model_path,
+            exclude_nir=exclude_nir,
+            exclude_fMASK=exclude_fMASK,
+            evaluation_dir=evaluation_dir,
+            file_name=model_name,
         )
 
     # task.close()
