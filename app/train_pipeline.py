@@ -112,7 +112,8 @@ for model_name, model in models.items():
             os.makedirs(path)
 
     # Training
-    # task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
+    task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
+    clearml_logger = task.get_logger()
 
     # model = load_model(model, model_load_path)
     model.logs_path = training_process_path
@@ -125,6 +126,7 @@ for model_name, model in models.items():
         learning_rate=0.001,
         exclude_nir=exclude_nir,
         exclude_fMASK=exclude_fMASK,
+        clearml_logger=clearml_logger,
     )
     save_model(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"))
 
@@ -157,4 +159,4 @@ for model_name, model in models.items():
             file_name=model_name,
         )
 
-    # task.close()
+    task.close()

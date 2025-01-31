@@ -22,6 +22,7 @@ def train_model(
     device="cuda",
     exclude_nir=True,
     exclude_fMASK=True,
+    clearml_logger=None,
 ):
     model.to(device)
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
@@ -34,6 +35,7 @@ def train_model(
         if isinstance(m, torch.nn.BatchNorm2d):
             m.requires_grad_(False)
 
+    iteration = 0
     for epoch in range(epochs):
         running_loss = 0.0
         total_samples = 0
@@ -113,6 +115,17 @@ def train_model(
                     f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
+                iteration += 1
+                if clearml_logger is not None:
+                    clearml_logger.current_logger().report_scalar(title="Train Average Loss", series="Average Loss",
+                                                                  value=avg_loss, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average IoU", series="Average IoU",
+                                                                  value=avg_iou, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average Accuracy", series="Average Accuracy",
+                                                                  value=avg_accuracy, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average Precision", series="Average Precision",
+                                                                  value=avg_precision, iteration=iteration)
+
                 # Подготовка данных
                 if batch_size > 1:
                     model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
@@ -171,7 +184,8 @@ def train_model(
         )
 
         validate(
-            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK
+            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK,
+            clearml_logger=clearml_logger, iteration=iteration,
         )
 
         lr_scheduler.step()
@@ -192,6 +206,8 @@ def validate(
     device: str,
     exclude_nir=True,
     exclude_fMASK=True,
+    clearml_logger=None,
+    iteration=None,
 ):
     """
     Validate the model using the validation dataset.
@@ -253,6 +269,17 @@ def validate(
     avg_iou = total_iou / total_samples
     avg_accuracy = total_accuracy / total_samples
     avg_precision = total_precision / total_samples
+
+    if clearml_logger is not None:
+        clearml_logger.current_logger().report_scalar(title="Validation Average Loss", series="Average Loss",
+                                                      value=avg_loss, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average IoU", series="Average IoU",
+                                                      value=avg_iou, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average Accuracy", series="Average Accuracy",
+                                                      value=avg_accuracy, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average Precision", series="Average Precision",
+                                                      value=avg_precision, iteration=iteration)
+
     print(
         f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
     )
