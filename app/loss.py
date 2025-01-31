@@ -1,5 +1,6 @@
-import torch
 import numpy as np
+import torch
+
 
 def calculate_iou(pred_mask: torch.Tensor, true_mask: torch.Tensor, threshold: float = 0.5) -> float:
     """
