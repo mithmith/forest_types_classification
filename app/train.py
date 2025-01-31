@@ -27,6 +27,7 @@ def train_model(
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.75)
     # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     for m in model.modules():
@@ -102,7 +103,7 @@ def train_model(
                 # Очищаем батчи для следующего набора
                 batch_inputs, batch_masks = [], []
 
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 100 == 0:
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
@@ -172,6 +173,10 @@ def train_model(
         validate(
             model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK
         )
+
+        lr_scheduler.step()
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f"Updated Learning Rate: {current_lr:.6f}")
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
