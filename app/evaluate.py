@@ -17,9 +17,11 @@ def predict_sample_from_dataset(
     model_path: Path,
     sample_num: str,
     dataset_path: Path,
+    forest_model_path: Path,
     exclude_nir=False,
     exclude_fMASK=False,
-    visualize=False,
+    evaluation_dir=None,
+    file_name=None,
 ):
     features_names = ["red", "green", "blue"]
 
@@ -42,14 +44,14 @@ def predict_sample_from_dataset(
         ground_truth_tensor.append(f.read(1))
 
     if not exclude_fMASK:
-        input_tensor.append(ForestTypesDataset.create_forest_mask(sample_num))
+        input_tensor.append(ForestTypesDataset.create_forest_mask(sample_num, dataset_path, forest_model_path))
 
     input_tensor = np.array(input_tensor)
     loaded_model = load_model(model, model_path)
 
     predict_mask = evaluate(loaded_model, input_tensor)
 
-    if visualize:
+    if evaluation_dir is not None and evaluation_dir.exists():
         output_img = np.transpose(output_img, (1, 2, 0))
         normalized_rgb = np.zeros_like(output_img, dtype=np.float32)  # Создаём пустой массив для нормализации
         for channel in range(output_img.shape[2]):  # По каждому каналу (R, G, B)
@@ -77,8 +79,14 @@ def predict_sample_from_dataset(
         plt.title("Ground Truth Mask + Model Mask")
         plt.tight_layout()
 
-        plt.savefig(f"{str(model_path)[:-4]}_{sample_num}.png")
+        if file_name is None:
+            save_path = f"{str(model_path)[:-4]}_{sample_num}.png"
+            plt.savefig(save_path)
+        else:
+            save_path = evaluation_dir / f"{file_name}_{sample_num}.png"
+            plt.savefig(save_path)
 
+        print(f"Evaluation result saved to: {save_path}")
         plt.close()
 
     return predict_mask
@@ -89,6 +97,7 @@ def inference_test(
     sample_num: str,
     num_runs: int,
     dataset_path: Path,
+    forest_model_path: Path,
     exclude_nir=False,
     exclude_fMASK=False,
 ):
@@ -107,7 +116,7 @@ def inference_test(
         ground_truth_tensor.append(f.read(1))
 
     if not exclude_fMASK:
-        input_tensor.append(ForestTypesDataset.create_forest_mask(sample_num))
+        input_tensor.append(ForestTypesDataset.create_forest_mask(sample_num, dataset_path, forest_model_path))
 
     input_tensor = np.array(input_tensor)
     loaded_model = load_model(model, model_path)
