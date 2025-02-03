@@ -472,7 +472,7 @@ class ForestTypesDataset:
                     continue
 
             if not exclude_fMASK:
-                band_data.append(self.create_forest_mask(sample_id))
+                band_data.append(self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path))
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")
