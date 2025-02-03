@@ -5,14 +5,15 @@ import torch.nn.functional as F
 
 
 class SKResNeXt50_PSPNet(nn.Module):
-    def __init__(self, num_classes: int, pool_sizes=(1, 2, 3, 6)):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True, pool_sizes=(1, 2, 3, 6)):
         super(SKResNeXt50_PSPNet, self).__init__()
         self.num_classes = num_classes
         self.pool_sizes = pool_sizes
 
         # SKResNeXt50 encoder
         self.encoder = timm.create_model("skresnext50_32x4d", pretrained=True, features_only=True)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
         encoder_channels = self.encoder.feature_info.channels()  # Список каналов выходов каждого уровня
 
         # Pyramid Pooling Module

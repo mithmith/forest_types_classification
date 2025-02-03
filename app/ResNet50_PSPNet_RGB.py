@@ -5,14 +5,15 @@ from torchvision import models
 
 
 class ResNet50_PSPNet(nn.Module):
-    def __init__(self, num_classes: int, pool_sizes=(1, 2, 3, 6)):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True, pool_sizes=(1, 2, 3, 6)):
         super(ResNet50_PSPNet, self).__init__()
         self.num_classes = num_classes
         self.pool_sizes = pool_sizes
 
         # ResNet50 encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         # Save intermediate features
         self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU

@@ -5,13 +5,14 @@ import torch.nn.functional as F
 
 
 class MobileNetV3_PSPNet(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True):
         super(MobileNetV3_PSPNet, self).__init__()
         self.num_classes = num_classes
 
         # MobileNetV3 Large encoder
         self.encoder = timm.create_model("mobilenetv3_large_100", pretrained=True, features_only=True)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
         encoder_channels = self.encoder.feature_info.channels()[-1]  # Выходные каналы последнего уровня энкодера
 
         # Pyramid Pooling Module

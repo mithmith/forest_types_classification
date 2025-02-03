@@ -59,27 +59,27 @@ for damage_prefix in damage_prefixes:
 
     # Version and model
     i = 1
-    model_MobileNetV3_UNet = MobileNetV3_UNet(num_classes=1)
-    model_MobileNetV3_UNet_NIR = MobileNetV3_UNet_NIR(num_classes=1)
-    model_MobileNetV3_UNet_NIR_fMASK = MobileNetV3_UNet_NIR_fMASK(num_classes=1)
+    freezed = True
 
-    model_ResNet50_UNet = ResNet50_UNet(num_classes=1)
-    model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1)
-    model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1)
+    model_MobileNetV3_UNet = MobileNetV3_UNet(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_UNet_NIR = MobileNetV3_UNet_NIR(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_UNet_NIR_fMASK = MobileNetV3_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
+
+    model_ResNet50_UNet = ResNet50_UNet(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
 
     model_ResNet50_RGB_Model = ResNet50_RGB_Model(num_classes=1)
     model_ResNet50_RGB_NIR_Model = ResNet50_RGB_NIR_Model(num_classes=1)
     model_ResNet50_RGB_NIR_fMASK_Model = ResNet50_RGB_NIR_fMASK_Model(num_classes=1)
 
-    model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1)
-    model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1)
-    model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1)
+    model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1, freeze_encoder=freezed)
+    model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1, freeze_encoder=freezed)
+    model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
 
-    model_MobileNetV3_PSPNet = MobileNetV3_PSPNet(num_classes=1)
-    model_ResNet50_PSPNet = ResNet50_PSPNet(num_classes=1)
-    model_SKResNeXt50_PSPNet = SKResNeXt50_PSPNet(num_classes=1)
-
-    freezed = True
+    model_MobileNetV3_PSPNet = MobileNetV3_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_PSPNet = ResNet50_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_SKResNeXt50_PSPNet = SKResNeXt50_PSPNet(num_classes=1, freeze_encoder=freezed)
 
     if freezed:
         freez_prefix = "_freezed"

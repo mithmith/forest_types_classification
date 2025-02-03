@@ -4,13 +4,14 @@ import torch.nn as nn
 
 
 class SKResNeXt50_UNet(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True):
         super(SKResNeXt50_UNet, self).__init__()
         self.num_classes = num_classes
 
         # SK-ResNeXt50 encoder (timm library)
         self.encoder = timm.create_model("skresnext50_32x4d", pretrained=True, features_only=True)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
         encoder_channels = self.encoder.feature_info.channels()  # Получаем список каналов для всех слоев
 
         # Decoder with skip connections

@@ -72,13 +72,14 @@ class ResNet50_RGB_Model(nn.Module):
 
 
 class ResNet50_UNet(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True):
         super(ResNet50_UNet, self).__init__()
         self.num_classes = num_classes
 
         # ResNet50 encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        # self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         # Save intermediate features for skip connections
         self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU

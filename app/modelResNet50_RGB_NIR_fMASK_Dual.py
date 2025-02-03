@@ -11,7 +11,7 @@ from app.dataset_dual import ForestTypesDataset
 
 
 class ResNet50_RGB_NIR_fMASK_Dual_Model(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True):
         super(ResNet50_RGB_NIR_fMASK_Dual_Model, self).__init__()
         self.num_classes = num_classes
         self.logs_path = Path("./train_progress_v5")
@@ -20,7 +20,8 @@ class ResNet50_RGB_NIR_fMASK_Dual_Model(nn.Module):
         self.encoder1 = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         # Второй RGB энкодер ResNet
         self.encoder2 = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         # Модифицируем ResNet на 5 каналов на входе (RGB + NIR + маска)
         self.encoder1.conv1 = self.modify_first_layer(self.encoder1.conv1, in_channels=5)
