@@ -56,9 +56,10 @@ def train_model(
                 input_batch = torch.stack(batch_inputs).to(device)
                 mask_batch = torch.stack(batch_masks).to(device)
 
-                print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
+                # print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
                 if torch.isnan(input_batch).any() or torch.isinf(input_batch).any():
-                    print("❌ ERROR: input_batch содержит NaN или inf!")
+                    logger.error("❌ ERROR: input_batch содержит NaN или inf!")
+                    return False
 
                 optimizer.zero_grad()
 
@@ -78,7 +79,7 @@ def train_model(
 
                 for name, param in model.named_parameters():
                     if param.grad is not None and torch.isnan(param.grad).any():
-                        print(f"❌ WARNING: NaN в градиентах {name}")
+                        logger.warning(f"❌ WARNING: NaN в градиентах {name}")
 
                 running_loss += loss.item()
                 total_samples += 1
@@ -86,7 +87,7 @@ def train_model(
                 # Calculate IoU
                 iou = calculate_iou(torch.sigmoid(outputs), mask_batch)
                 total_iou += iou
-                logger.debug(f"iou: {iou}, avr iou: {total_iou / total_samples}, total_samples: {total_samples}")
+                # logger.debug(f"iou: {iou}, avr iou: {total_iou / total_samples}, total_samples: {total_samples}")
 
                 # Calculate Overall Accuracy
                 pred_mask = (torch.sigmoid(outputs) > 0.5).float()
@@ -110,7 +111,7 @@ def train_model(
                 avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+                    f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
                 # Подготовка данных
@@ -124,9 +125,9 @@ def train_model(
                     rgb_image = input_batch.cpu().squeeze().numpy()[:3]
 
                 # Нормализация RGB-данных для визуализации
-                logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
-                normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)))
-                predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
+                # logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
+                normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)), u_percent=97)
+                predicted_mask = (np.clip(model_out_mask, 0, 1) < 0.5).astype(np.uint8)
                 rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
 
                 # Построение визуализаций
@@ -134,14 +135,19 @@ def train_model(
 
                 # 1. Черно-белая маска Ground Truth + полупрозрачная маска модели
                 plt.subplot(1, 2, 1)
-                plt.imshow(ground_truth_mask, cmap="gray")
-                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
+                mask_rgb = np.zeros((*ground_truth_mask.shape, 3), dtype=np.uint8)
+                mask_rgb[ground_truth_mask == 1] = [255, 255, 255]  # Белый (GT=1, Pred=0)
+                mask_rgb[predicted_mask == 1] = [128, 128, 128]  # Серый (GT=0, Pred=1)
+                mask_rgb[(ground_truth_mask == 1) & (predicted_mask == 1)] = [255, 0, 0]  # Красный (GT=1, Pred=1)
+                plt.imshow(mask_rgb)
                 plt.title("Ground Truth + Model Mask")
 
                 # 2. RGB-изображение + полупрозрачная маска модели
                 plt.subplot(1, 2, 2)
+                overlay = rgb_uint8.copy()
+                overlay[predicted_mask == 1] = [255, 0, 0]  # Красный цвет для маски
                 plt.imshow(rgb_uint8)
-                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
+                plt.imshow(overlay, alpha=0.5)  # Полупрозрачная маска
                 plt.title("RGB Image + Model Mask")
 
                 # Сохранение изображения
@@ -157,7 +163,7 @@ def train_model(
                 avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+                    f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
         avg_loss = running_loss / total_samples
@@ -167,7 +173,7 @@ def train_model(
 
         print(
             f"Epoch [{epoch + 1}/{epochs}],"
-            f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+            f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
         )
 
         validate(
