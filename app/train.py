@@ -61,7 +61,8 @@ def train_model(
 
                 # print(f"input_batch min: {input_batch.min().item()}, max: {input_batch.max().item()}")
                 if torch.isnan(input_batch).any() or torch.isinf(input_batch).any():
-                    print("❌ ERROR: input_batch содержит NaN или inf!")
+                    logger.error("❌ ERROR: input_batch содержит NaN или inf!")
+                    return False
 
                 optimizer.zero_grad()
 
@@ -81,7 +82,7 @@ def train_model(
 
                 for name, param in model.named_parameters():
                     if param.grad is not None and torch.isnan(param.grad).any():
-                        print(f"❌ WARNING: NaN в градиентах {name}")
+                        logger.warning(f"❌ WARNING: NaN в градиентах {name}")
 
                 running_loss += loss.item()
                 total_samples += 1
@@ -113,7 +114,7 @@ def train_model(
                 avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+                    f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
                 iteration += 1
@@ -143,6 +144,7 @@ def train_model(
                 predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
                 rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
 
+                # Построение визуализаций
                 plt.figure(figsize=(12, 6))
                 plt.subplot(1, 3, 1)
                 plt.imshow(rgb_uint8)
@@ -171,7 +173,7 @@ def train_model(
                 avg_precision = total_precision / total_samples
                 print(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
-                    f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+                    f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
 
         avg_loss = running_loss / total_samples
@@ -181,7 +183,7 @@ def train_model(
 
         print(
             f"Epoch [{epoch + 1}/{epochs}],"
-            f" Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
+            f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
         )
 
         validate(

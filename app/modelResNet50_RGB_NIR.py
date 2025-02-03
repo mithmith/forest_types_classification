@@ -72,13 +72,14 @@ class ResNet50_RGB_NIR_Model(nn.Module):
 
 
 class ResNet50_UNet_NIR(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, freeze_encoder: bool = True):
         super(ResNet50_UNet_NIR, self).__init__()
         self.num_classes = num_classes
 
         # Single ResNet encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        # self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        if freeze_encoder:
+            self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=4)
 
