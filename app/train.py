@@ -2,38 +2,41 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from loguru import logger
 
-from app.dataset_single import ForestTypesDataset
 from app.loss import calculate_iou, iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
 
 def train_model(
     model: nn.Module,
-    train_dataset: ForestTypesDataset,
-    val_dataset: ForestTypesDataset,
+    train_dataset,
+    val_dataset,
     epochs=1,
     batch_size=1,
     learning_rate=0.001,
     device="cuda",
     exclude_nir=True,
     exclude_fMASK=True,
+    clearml_logger=None,
 ):
     model.to(device)
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    logger.debug(f"Dataset length: {len(train_dataset)}")
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.75)
+    # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     for m in model.modules():
         if isinstance(m, torch.nn.BatchNorm2d):
             m.requires_grad_(False)
 
+    iteration = 0
     for epoch in range(epochs):
         running_loss = 0.0
         total_samples = 0
@@ -104,7 +107,7 @@ def train_model(
                 # Очищаем батчи для следующего набора
                 batch_inputs, batch_masks = [], []
 
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 100 == 0:
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
                 avg_accuracy = total_accuracy / total_samples
@@ -113,6 +116,17 @@ def train_model(
                     f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(train_dataset)}],"
                     f" Avg Loss: {avg_loss:.6f}, Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
                 )
+
+                iteration += 1
+                if clearml_logger is not None:
+                    clearml_logger.current_logger().report_scalar(title="Train Average Loss", series="Average Loss",
+                                                                  value=avg_loss, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average IoU", series="Average IoU",
+                                                                  value=avg_iou, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average Accuracy", series="Average Accuracy",
+                                                                  value=avg_accuracy, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(title="Train Average Precision", series="Average Precision",
+                                                                  value=avg_precision, iteration=iteration)
 
                 # Подготовка данных
                 if batch_size > 1:
@@ -177,8 +191,13 @@ def train_model(
         )
 
         validate(
-            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK
+            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK,
+            clearml_logger=clearml_logger, iteration=iteration,
         )
+
+        lr_scheduler.step()
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f"Updated Learning Rate: {current_lr:.6f}")
 
         # if (epoch + 1) % 5 == 0:
         # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
@@ -188,17 +207,19 @@ def train_model(
 
 def validate(
     model: nn.Module,
-    val_dataset: ForestTypesDataset,
+    val_dataset,
     criterion,
     batch_size: int,
     device: str,
     exclude_nir=True,
     exclude_fMASK=True,
+    clearml_logger=None,
+    iteration=None,
 ):
     """
     Validate the model using the validation dataset.
     Args:
-        val_dataset (ForestTypesDataset): Dataset for validation.
+        val_dataset: Dataset for validation.
         criterion: Loss function.
         batch_size (int): Batch size for validation.
         device (str): Device to use for validation ('cuda' or 'cpu').
@@ -255,6 +276,17 @@ def validate(
     avg_iou = total_iou / total_samples
     avg_accuracy = total_accuracy / total_samples
     avg_precision = total_precision / total_samples
+
+    if clearml_logger is not None:
+        clearml_logger.current_logger().report_scalar(title="Validation Average Loss", series="Average Loss",
+                                                      value=avg_loss, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average IoU", series="Average IoU",
+                                                      value=avg_iou, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average Accuracy", series="Average Accuracy",
+                                                      value=avg_accuracy, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(title="Validation Average Precision", series="Average Precision",
+                                                      value=avg_precision, iteration=iteration)
+
     print(
         f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
     )

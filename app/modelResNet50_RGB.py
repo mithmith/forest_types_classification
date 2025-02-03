@@ -78,7 +78,7 @@ class ResNet50_UNet(nn.Module):
 
         # ResNet50 encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        # self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
 
         # Save intermediate features for skip connections
         self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU

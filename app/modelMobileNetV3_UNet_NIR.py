@@ -10,7 +10,7 @@ class MobileNetV3_UNet_NIR(nn.Module):
 
         # MobileNetV3 encoder
         self.encoder = timm.create_model("mobilenetv3_large_100", pretrained=True, features_only=True)
-        self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
+        # self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
         self.modify_first_layer(in_channels=4)
         encoder_channels = self.encoder.feature_info.channels()  # Get output channels of all encoder stages
 
