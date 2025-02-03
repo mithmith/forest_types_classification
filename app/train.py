@@ -118,13 +118,13 @@ def train_model(
 
                 iteration += 1
                 if clearml_logger is not None:
-                    clearml_logger.current_logger().report_scalar(title="Train Average Loss", series="Average Loss",
+                    clearml_logger.current_logger().report_scalar(title="Loss", series="Train Average Loss",
                                                                   value=avg_loss, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Train Average IoU", series="Average IoU",
+                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average IoU",
                                                                   value=avg_iou, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Train Average Accuracy", series="Average Accuracy",
+                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average Accuracy",
                                                                   value=avg_accuracy, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Train Average Precision", series="Average Precision",
+                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average Precision",
                                                                   value=avg_precision, iteration=iteration)
 
                 # Подготовка данных
@@ -143,20 +143,20 @@ def train_model(
                 predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
                 rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
 
-                # Построение визуализаций
                 plt.figure(figsize=(12, 6))
-
-                # 1. Черно-белая маска Ground Truth + полупрозрачная маска модели
-                plt.subplot(1, 2, 1)
-                plt.imshow(ground_truth_mask, cmap="gray")
-                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
-                plt.title("Ground Truth + Model Mask")
-
-                # 2. RGB-изображение + полупрозрачная маска модели
-                plt.subplot(1, 2, 2)
+                plt.subplot(1, 3, 1)
                 plt.imshow(rgb_uint8)
-                plt.imshow(predicted_mask, cmap="Reds", alpha=0.3)
+                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
                 plt.title("RGB Image + Model Mask")
+                plt.subplot(1, 3, 2)
+                plt.imshow(rgb_uint8)
+                plt.imshow(ground_truth_mask, cmap="hot", alpha=0.5)
+                plt.title("RGB Image + Ground Truth Mask")
+                plt.subplot(1, 3, 3)
+                plt.imshow(ground_truth_mask, cmap="gray")
+                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
+                plt.title("Ground Truth Mask + Model Mask")
+                plt.tight_layout()
 
                 # Сохранение изображения
                 if not model.logs_path.exists():
@@ -272,13 +272,13 @@ def validate(
     avg_precision = total_precision / total_samples
 
     if clearml_logger is not None:
-        clearml_logger.current_logger().report_scalar(title="Validation Average Loss", series="Average Loss",
+        clearml_logger.current_logger().report_scalar(title="Loss", series="Validation Average Loss",
                                                       value=avg_loss, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Validation Average IoU", series="Average IoU",
+        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average IoU",
                                                       value=avg_iou, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Validation Average Accuracy", series="Average Accuracy",
+        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average Accuracy",
                                                       value=avg_accuracy, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Validation Average Precision", series="Average Precision",
+        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average Precision",
                                                       value=avg_precision, iteration=iteration)
 
     print(
