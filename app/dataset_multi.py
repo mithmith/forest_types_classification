@@ -20,6 +20,7 @@ from torchview import draw_graph
 from torchviz import make_dot
 from tqdm import tqdm
 from xgboost import XGBClassifier
+from utils.constants import CLASS_NAME
 
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
@@ -247,19 +248,33 @@ class ForestTypesDataset:
             while total_samples < target_samples:
                 for img_file in self.images_files:
                     geojson_mask_paths = self.find_geojson_paths_for_img(img_file)
-                    if len(geojson_mask_paths) < 4:
+                    # Check if all required classes are present.
+                    required = {info["name"] for info in CLASS_NAME.values()}
+                    if set(geojson_mask_paths.keys()) != required:
                         logger.info(
-                            f"Not enough masks found for image {img_file} (found {len(geojson_mask_paths)}), skipping.")
+                            f"Not all required masks found for image {img_file} (found {list(geojson_mask_paths.keys())}), skipping.")
                         continue
 
                     transform_matrix, img_width, img_height, crs = self.get_info_from_img(img_file)
 
-                    masks = {}
-                    for class_name, mask_path in geojson_mask_paths.items():
-                        with open(mask_path) as f:
+                    # Start with a zeros mask (background = 0)
+                    combined_mask = np.zeros((img_height, img_width), dtype=np.uint8)
+
+                    # For each class, load its geojson, create a binary mask, and update the combined mask.
+                    for key, class_info in CLASS_NAME.items():
+                        class_name = class_info["name"]
+                        threshold = class_info["threshold"]
+                        class_value = int(round(threshold * 255))
+                        mask_geojson_path = geojson_mask_paths.get(class_name)
+
+                        with open(mask_geojson_path) as f:
                             geojson_dict = json.load(f)
-                        mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix, crs)
-                        masks[class_name] = mask
+                        # geo_mask.mask_from_geojson is assumed to return a binary mask (or one with nonzero values in mask areas)
+                        class_mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix,
+                                                                crs)
+                        # For each pixel where the class mask is present, set the combined mask to the class_value.
+                        # If masks overlap, we take the maximum value.
+                        combined_mask = np.maximum(combined_mask, ((class_mask > 0).astype(np.uint8)) * class_value)
 
                     generated_samples = 0
                     not_found = 0
@@ -278,11 +293,9 @@ class ForestTypesDataset:
                             box = self.get_random_bbox_within_crop_bbox(img_width, img_height, self.image_shape, normalized_polygon)
                         else:
                             box = self.get_random_bbox(img_width, img_height, self.image_shape)
-                        mask_regions = {}
-                        for class_name, mask in masks.items():
-                            mask_regions[class_name] = mask[box.miny:box.maxy, box.minx:box.maxx]
-                        combined_mask = np.any(np.stack(list(mask_regions.values()), axis=0), axis=0)
-                        if np.count_nonzero(combined_mask) <= 1000:
+
+                        combined_mask_region = combined_mask[box.miny:box.maxy, box.minx:box.maxx]
+                        if np.count_nonzero(combined_mask_region) <= 1000:
                             not_found += 1
                             if not_found > 500:
                                 logger.info("Not found anything after 500 attempts, skipping to next image...")
@@ -291,13 +304,12 @@ class ForestTypesDataset:
 
                         rnd_num = random.randint(100000, 999999)
 
-                        for class_name, mask_region in mask_regions.items():
-                            crop_mask_path = self.generated_dataset_path / f"{rnd_num}_{class_name}.tif"
-                            cropped_transform_matrix = window_transform(
-                                Window(box.minx, box.miny, box.width, box.height), transform_matrix
-                            )
-                            self.save_mask(mask_region, box.height, box.width, cropped_transform_matrix, crs,
-                                           crop_mask_path)
+                        crop_mask_path = self.generated_dataset_path / f"{rnd_num}_mask.tif"
+                        cropped_transform_matrix = window_transform(
+                            Window(box.minx, box.miny, box.width, box.height), transform_matrix
+                        )
+                        self.save_mask(combined_mask_region, box.height, box.width, cropped_transform_matrix, crs,
+                                       crop_mask_path)
 
                         for band_key, band_regex in self.bands_regex_list.items():
                             band_path = self.get_band_images(self.sentinel_root / img_file, band_regex)
