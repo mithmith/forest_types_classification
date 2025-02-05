@@ -13,8 +13,8 @@ from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
-from shapely.geometry import Polygon, MultiPolygon, shape
 from scipy.ndimage import rotate
+from shapely.geometry import MultiPolygon, Polygon, shape
 from torchsummary import summary
 from torchview import draw_graph
 from torchviz import make_dot
@@ -193,8 +193,9 @@ class ForestTypesDataset:
 
         return normalized_geometry
 
-    def get_random_bbox_within_crop_bbox(self, width: int, height: int, bbox_shape: tuple[int, int],
-                                         normalized_polygon) -> BoundingBox:
+    def get_random_bbox_within_crop_bbox(
+        self, width: int, height: int, bbox_shape: tuple[int, int], normalized_polygon
+    ) -> BoundingBox:
         """
         Generate a random bounding box constrained by a GeoJSON bounding area.
 
@@ -258,15 +259,19 @@ class ForestTypesDataset:
                     not_found = 0
                     region_bbox = img_file.split("_")[-2]
                     if self.crop_bboxes_dir is not None:
-                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + '.geojson')
+                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + ".geojson")
                         if image_crop_bbox_path.exists():
-                            with open(image_crop_bbox_path, 'r') as f:
+                            with open(image_crop_bbox_path, "r") as f:
                                 geojson_data = json.load(f)
-                                normalized_polygon = self.normalize_geojson_coordinates(geojson_data, img_width, img_height)
+                                normalized_polygon = self.normalize_geojson_coordinates(
+                                    geojson_data, img_width, img_height
+                                )
 
                     while generated_samples < samples_per_image:
                         if image_crop_bbox_path is not None and image_crop_bbox_path.exists():
-                            box = self.get_random_bbox_within_crop_bbox(img_width, img_height, self.image_shape, normalized_polygon)
+                            box = self.get_random_bbox_within_crop_bbox(
+                                img_width, img_height, self.image_shape, normalized_polygon
+                            )
                         else:
                             box = self.get_random_bbox(img_width, img_height, self.image_shape)
                         mask_region = mask[box.miny : box.maxy, box.minx : box.maxx]
@@ -472,7 +477,9 @@ class ForestTypesDataset:
                     continue
 
             if not exclude_fMASK:
-                band_data.append(self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path))
+                band_data.append(
+                    self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path)
+                )
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")

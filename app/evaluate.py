@@ -4,8 +4,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-from osgeo import gdal
 import torch.nn as nn
+from osgeo import gdal
 
 from app.dataset_single import ForestTypesDataset
 from app.train import evaluate, load_model
@@ -34,7 +34,7 @@ def predict_sample_from_dataset(
         with rasterio.open(dataset_path / f"{sample_num}_{feature_name}.tif") as f:
             if feature_name != "nir":
                 in_ds = gdal.OpenEx(str(dataset_path / f"{sample_num}_{feature_name}.tif"))
-                out_ds = gdal.Translate('/vsimem/in_memory_output.tif', in_ds)
+                out_ds = gdal.Translate("/vsimem/in_memory_output.tif", in_ds)
                 out_arr = out_ds.ReadAsArray()
                 output_img.append(out_arr)
             input_tensor.append(veg_index.preprocess_band(f.read(1)))
@@ -57,7 +57,7 @@ def predict_sample_from_dataset(
         for channel in range(output_img.shape[2]):  # По каждому каналу (R, G, B)
             channel_data = output_img[:, :, channel]
             normalized_rgb[:, :, channel] = (channel_data - channel_data.min()) / (
-                    channel_data.max() - channel_data.min() + 1e-6
+                channel_data.max() - channel_data.min() + 1e-6
             )  # Добавляем 1e-6 для избежания деления на 0
         # Increase brightness by scaling up values (factor 1.5 can be adjusted)
         brightness_factor = 3
@@ -90,6 +90,7 @@ def predict_sample_from_dataset(
         plt.close("all")
 
     return predict_mask
+
 
 def inference_test(
     model: nn.Module,
