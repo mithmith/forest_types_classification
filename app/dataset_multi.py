@@ -13,14 +13,14 @@ from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
-from shapely.geometry import Polygon, MultiPolygon, shape
 from scipy.ndimage import rotate
+from shapely.geometry import MultiPolygon, Polygon, shape
 from torchsummary import summary
 from torchview import draw_graph
 from torchviz import make_dot
 from tqdm import tqdm
-from xgboost import XGBClassifier
 from utils.constants import CLASS_NAME
+from xgboost import XGBClassifier
 
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
@@ -74,6 +74,7 @@ class ForestTypesDataset:
                     masks_paths[class_name] = s
                     break  # Found the file for this class; move to the next.
         return masks_paths
+
     def get_info_from_img(self, img_name: str):
         first_part = img_name.split("_")[2]
         second_part = img_name.split("_")[5]
@@ -197,8 +198,9 @@ class ForestTypesDataset:
 
         return normalized_geometry
 
-    def get_random_bbox_within_crop_bbox(self, width: int, height: int, bbox_shape: tuple[int, int],
-                                         normalized_polygon) -> BoundingBox:
+    def get_random_bbox_within_crop_bbox(
+        self, width: int, height: int, bbox_shape: tuple[int, int], normalized_polygon
+    ) -> BoundingBox:
         """
         Generate a random bounding box constrained by a GeoJSON bounding area.
 
@@ -252,7 +254,8 @@ class ForestTypesDataset:
                     required = {info["name"] for info in CLASS_NAME.values()}
                     if set(geojson_mask_paths.keys()) != required:
                         logger.info(
-                            f"Not all required masks found for image {img_file} (found {list(geojson_mask_paths.keys())}), skipping.")
+                            f"Not all required masks found for image {img_file} (found {list(geojson_mask_paths.keys())}), skipping."
+                        )
                         continue
 
                     transform_matrix, img_width, img_height, crs = self.get_info_from_img(img_file)
@@ -270,8 +273,9 @@ class ForestTypesDataset:
                         with open(mask_geojson_path) as f:
                             geojson_dict = json.load(f)
                         # geo_mask.mask_from_geojson is assumed to return a binary mask (or one with nonzero values in mask areas)
-                        class_mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix,
-                                                                crs)
+                        class_mask = geo_mask.mask_from_geojson(
+                            geojson_dict, (img_height, img_width), transform_matrix, crs
+                        )
                         # For each pixel where the class mask is present, set the combined mask to the class_value.
                         # If masks overlap, we take the maximum value.
                         combined_mask = np.maximum(combined_mask, ((class_mask > 0).astype(np.uint8)) * class_value)
@@ -282,19 +286,23 @@ class ForestTypesDataset:
                     normalized_polygon = None
                     image_crop_bbox_path = None
                     if self.crop_bboxes_dir is not None:
-                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + '.geojson')
+                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + ".geojson")
                         if image_crop_bbox_path.exists():
-                            with open(image_crop_bbox_path, 'r') as f:
+                            with open(image_crop_bbox_path, "r") as f:
                                 geojson_data = json.load(f)
-                                normalized_polygon = self.normalize_geojson_coordinates(geojson_data, img_width, img_height)
+                                normalized_polygon = self.normalize_geojson_coordinates(
+                                    geojson_data, img_width, img_height
+                                )
 
                     while generated_samples < samples_per_image:
                         if image_crop_bbox_path is not None and image_crop_bbox_path.exists():
-                            box = self.get_random_bbox_within_crop_bbox(img_width, img_height, self.image_shape, normalized_polygon)
+                            box = self.get_random_bbox_within_crop_bbox(
+                                img_width, img_height, self.image_shape, normalized_polygon
+                            )
                         else:
                             box = self.get_random_bbox(img_width, img_height, self.image_shape)
 
-                        combined_mask_region = combined_mask[box.miny:box.maxy, box.minx:box.maxx]
+                        combined_mask_region = combined_mask[box.miny : box.maxy, box.minx : box.maxx]
                         if np.count_nonzero(combined_mask_region) <= 1000:
                             not_found += 1
                             if not_found > 500:
@@ -308,8 +316,9 @@ class ForestTypesDataset:
                         cropped_transform_matrix = window_transform(
                             Window(box.minx, box.miny, box.width, box.height), transform_matrix
                         )
-                        self.save_mask(combined_mask_region, box.height, box.width, cropped_transform_matrix, crs,
-                                       crop_mask_path)
+                        self.save_mask(
+                            combined_mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path
+                        )
 
                         for band_key, band_regex in self.bands_regex_list.items():
                             band_path = self.get_band_images(self.sentinel_root / img_file, band_regex)
@@ -496,7 +505,9 @@ class ForestTypesDataset:
                     continue
 
             if not exclude_fMASK:
-                band_data.append(self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path))
+                band_data.append(
+                    self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path)
+                )
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")

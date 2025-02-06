@@ -2,7 +2,8 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-plt.switch_backend('agg')
+
+plt.switch_backend("agg")
 import numpy as np
 import torch
 import torch.nn as nn
@@ -119,14 +120,18 @@ def train_model(
 
                 iteration += 1
                 if clearml_logger is not None:
-                    clearml_logger.current_logger().report_scalar(title="Loss", series="Train Average Loss",
-                                                                  value=avg_loss, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average IoU",
-                                                                  value=avg_iou, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average Accuracy",
-                                                                  value=avg_accuracy, iteration=iteration)
-                    clearml_logger.current_logger().report_scalar(title="Metrics", series="Train Average Precision",
-                                                                  value=avg_precision, iteration=iteration)
+                    clearml_logger.current_logger().report_scalar(
+                        title="Loss", series="Train Average Loss", value=avg_loss, iteration=iteration
+                    )
+                    clearml_logger.current_logger().report_scalar(
+                        title="Metrics", series="Train Average IoU", value=avg_iou, iteration=iteration
+                    )
+                    clearml_logger.current_logger().report_scalar(
+                        title="Metrics", series="Train Average Accuracy", value=avg_accuracy, iteration=iteration
+                    )
+                    clearml_logger.current_logger().report_scalar(
+                        title="Metrics", series="Train Average Precision", value=avg_precision, iteration=iteration
+                    )
 
                 # Подготовка данных
                 if batch_size > 1:
@@ -187,12 +192,19 @@ def train_model(
         )
 
         validate(
-            model, val_dataset, criterion, batch_size, device, exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK,
-            clearml_logger=clearml_logger, iteration=iteration,
+            model,
+            val_dataset,
+            criterion,
+            batch_size,
+            device,
+            exclude_nir=exclude_nir,
+            exclude_fMASK=exclude_fMASK,
+            clearml_logger=clearml_logger,
+            iteration=iteration,
         )
 
         lr_scheduler.step()
-        current_lr = optimizer.param_groups[0]['lr']
+        current_lr = optimizer.param_groups[0]["lr"]
         print(f"Updated Learning Rate: {current_lr:.6f}")
 
         # if (epoch + 1) % 5 == 0:
@@ -274,14 +286,18 @@ def validate(
     avg_precision = total_precision / total_samples
 
     if clearml_logger is not None:
-        clearml_logger.current_logger().report_scalar(title="Loss", series="Validation Average Loss",
-                                                      value=avg_loss, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average IoU",
-                                                      value=avg_iou, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average Accuracy",
-                                                      value=avg_accuracy, iteration=iteration)
-        clearml_logger.current_logger().report_scalar(title="Metrics", series="Validation Average Precision",
-                                                      value=avg_precision, iteration=iteration)
+        clearml_logger.current_logger().report_scalar(
+            title="Loss", series="Validation Average Loss", value=avg_loss, iteration=iteration
+        )
+        clearml_logger.current_logger().report_scalar(
+            title="Metrics", series="Validation Average IoU", value=avg_iou, iteration=iteration
+        )
+        clearml_logger.current_logger().report_scalar(
+            title="Metrics", series="Validation Average Accuracy", value=avg_accuracy, iteration=iteration
+        )
+        clearml_logger.current_logger().report_scalar(
+            title="Metrics", series="Validation Average Precision", value=avg_precision, iteration=iteration
+        )
 
     print(
         f"Validation Average Loss: {avg_loss:.6f}, Average IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
