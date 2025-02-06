@@ -6,18 +6,22 @@ import evaluate
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
-from app.MobileNetV3_PSPNet_RGB import MobileNetV3_PSPNet
-from app.modelMobileNetV3_UNet import MobileNetV3_UNet
-from app.modelMobileNetV3_UNet_NIR import MobileNetV3_UNet_NIR
-from app.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
+
 from app.modelResNet50_RGB import ResNet50_RGB_Model, ResNet50_UNet
 from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model, ResNet50_UNet_NIR
 from app.modelResNet50_RGB_NIR_fMASK import ResNet50_RGB_NIR_fMASK_Model, ResNet50_UNet_NIR_fMASK
 from app.modelSKResNeXt50_UNet import SKResNeXt50_UNet
 from app.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
 from app.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
+from app.modelMobileNetV3_UNet import MobileNetV3_UNet
+from app.modelMobileNetV3_UNet_NIR import MobileNetV3_UNet_NIR
+from app.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
 from app.ResNet50_PSPNet_RGB import ResNet50_PSPNet
+from app.ResNet50_PSPNet_RGB_NIR import ResNet50_PSPNet_NIR
 from app.SKResNeXt50_PSPNet_RGB import SKResNeXt50_PSPNet
+from app.SKResNeXt50_PSPNet_RGB_NIR import SKResNeXt50_PSPNet_NIR
+from app.MobileNetV3_PSPNet_RGB import MobileNetV3_PSPNet
+from app.MobileNetV3_PSPNet_RGB_NIR import MobileNetV3_PSPNet_NIR
 from app.train import load_model, save_model, train_model
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
@@ -26,7 +30,7 @@ from app.train import load_model, save_model, train_model
 
 # Prefixes
 path_prefix = Path("G:/Orni_forest/")
-damage_prefixes = ["_burns", "_deforestation", "drying"]
+damage_prefixes = ["_burns", "_deforestation", "_drying"]
 
 for damage_prefix in damage_prefixes:
     # Dataset paths
@@ -59,27 +63,32 @@ for damage_prefix in damage_prefixes:
 
     # Version and model
     i = 1
-    freezed = True
-
-    model_MobileNetV3_UNet = MobileNetV3_UNet(num_classes=1, freeze_encoder=freezed)
-    model_MobileNetV3_UNet_NIR = MobileNetV3_UNet_NIR(num_classes=1, freeze_encoder=freezed)
-    model_MobileNetV3_UNet_NIR_fMASK = MobileNetV3_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
-
-    model_ResNet50_UNet = ResNet50_UNet(num_classes=1, freeze_encoder=freezed)
-    model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1, freeze_encoder=freezed)
-    model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
+    freezed = False
 
     model_ResNet50_RGB_Model = ResNet50_RGB_Model(num_classes=1)
     model_ResNet50_RGB_NIR_Model = ResNet50_RGB_NIR_Model(num_classes=1)
     model_ResNet50_RGB_NIR_fMASK_Model = ResNet50_RGB_NIR_fMASK_Model(num_classes=1)
 
+    model_ResNet50_UNet = ResNet50_UNet(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_UNet_NIR = ResNet50_UNet_NIR(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_UNet_NIR_fMASK = ResNet50_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
+
     model_SKResNeXt50_UNet = SKResNeXt50_UNet(num_classes=1, freeze_encoder=freezed)
     model_SKResNeXt50_UNet_NIR = SKResNeXt50_UNet_NIR(num_classes=1, freeze_encoder=freezed)
     model_SKResNeXt50_UNet_NIR_fMASK = SKResNeXt50_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
 
-    model_MobileNetV3_PSPNet = MobileNetV3_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_UNet = MobileNetV3_UNet(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_UNet_NIR = MobileNetV3_UNet_NIR(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_UNet_NIR_fMASK = MobileNetV3_UNet_NIR_fMASK(num_classes=1, freeze_encoder=freezed)
+
     model_ResNet50_PSPNet = ResNet50_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_ResNet50_PSPNet_NIR = ResNet50_PSPNet_NIR(num_classes=1, freeze_encoder=freezed)
+
     model_SKResNeXt50_PSPNet = SKResNeXt50_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_SKResNeXt50_PSPNet_NIR = SKResNeXt50_PSPNet_NIR(num_classes=1, freeze_encoder=freezed)
+
+    model_MobileNetV3_PSPNet = MobileNetV3_PSPNet(num_classes=1, freeze_encoder=freezed)
+    model_MobileNetV3_PSPNet_NIR = MobileNetV3_PSPNet_NIR(num_classes=1, freeze_encoder=freezed)
 
     if freezed:
         freez_prefix = "_freezed"
@@ -87,21 +96,24 @@ for damage_prefix in damage_prefixes:
         freez_prefix = "_unfreezed"
 
     models = {
-        "MobileNetV3_PSPNet" + damage_prefix + freez_prefix: model_MobileNetV3_PSPNet,
-        "ResNet50_PSPNet" + damage_prefix + freez_prefix: model_ResNet50_PSPNet,
-        "SKResNeXt50_PSPNet" + damage_prefix + freez_prefix: model_SKResNeXt50_PSPNet,
-        # "MobileNetV3_UNet" + damage_prefix + freez_prefix: model_MobileNetV3_UNet,
-        # "MobileNetV3_UNet_NIR" + damage_prefix + freez_prefix: model_MobileNetV3_UNet_NIR,
-        # "MobileNetV3_UNet_NIR_fMASK" + damage_prefix + freez_prefix: model_MobileNetV3_UNet_NIR_fMASK,
-        # "ResNet50_UNet" + damage_prefix + freez_prefix: model_ResNet50_UNet,
-        # "ResNet50_UNet_NIR" + damage_prefix + freez_prefix: model_ResNet50_UNet_NIR,
-        # "ResNet50_UNet_NIR_fMASK" + damage_prefix + freez_prefix: model_ResNet50_UNet_NIR_fMASK,
         # "ResNet50_RGB_Model" + damage_prefix + freez_prefix: model_ResNet50_RGB_Model,
         # "ResNet50_RGB_NIR_Model" + damage_prefix + freez_prefix: model_ResNet50_RGB_NIR_Model,
         # "ResNet50_RGB_NIR_fMASK_Model" + damage_prefix + freez_prefix: model_ResNet50_RGB_NIR_fMASK_Model,
+        # "ResNet50_UNet" + damage_prefix + freez_prefix: model_ResNet50_UNet,
+        # "ResNet50_UNet_NIR" + damage_prefix + freez_prefix: model_ResNet50_UNet_NIR,
+        # "ResNet50_UNet_NIR_fMASK" + damage_prefix + freez_prefix: model_ResNet50_UNet_NIR_fMASK,
         # "SKResNeXt50_UNet" + damage_prefix + freez_prefix: model_SKResNeXt50_UNet,
         # "SKResNeXt50_UNet_NIR" + damage_prefix + freez_prefix: model_SKResNeXt50_UNet_NIR,
         # "SKResNeXt50_UNet_NIR_fMASK" + damage_prefix + freez_prefix: model_SKResNeXt50_UNet_NIR_fMASK,
+        # "MobileNetV3_UNet" + damage_prefix + freez_prefix: model_MobileNetV3_UNet,
+        # "MobileNetV3_UNet_NIR" + damage_prefix + freez_prefix: model_MobileNetV3_UNet_NIR,
+        # "MobileNetV3_UNet_NIR_fMASK" + damage_prefix + freez_prefix: model_MobileNetV3_UNet_NIR_fMASK,
+        # "ResNet50_PSPNet" + damage_prefix + freez_prefix: model_ResNet50_PSPNet,
+        "ResNet50_PSPNet_NIR" + damage_prefix + freez_prefix: model_ResNet50_PSPNet_NIR,
+        # "SKResNeXt50_PSPNet" + damage_prefix + freez_prefix: model_SKResNeXt50_PSPNet,
+        "SKResNeXt50_PSPNet_NIR" + damage_prefix + freez_prefix: model_SKResNeXt50_PSPNet_NIR,
+        # "MobileNetV3_PSPNet" + damage_prefix + freez_prefix: model_MobileNetV3_PSPNet,
+        "MobileNetV3_PSPNet_NIR" + damage_prefix + freez_prefix: model_MobileNetV3_PSPNet_NIR,
     }
 
     for model_name, model in models.items():
