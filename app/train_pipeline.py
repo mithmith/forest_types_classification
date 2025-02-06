@@ -156,6 +156,7 @@ for damage_prefix in damage_prefixes:
             exclude_nir=exclude_nir,
             exclude_fMASK=exclude_fMASK,
             clearml_logger=clearml_logger,
+            model_name=model_name,
         )
         save_model(model, model_save_path.joinpath(f"{model_name}_v{i}.pth"))
 

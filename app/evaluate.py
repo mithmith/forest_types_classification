@@ -10,6 +10,7 @@ from osgeo import gdal
 from app.dataset_single import ForestTypesDataset
 from app.train import evaluate, load_model
 from app.utils import veg_index
+from loguru import logger
 
 
 def predict_sample_from_dataset(
@@ -86,7 +87,7 @@ def predict_sample_from_dataset(
             save_path = evaluation_dir / f"{file_name}_{sample_num}.png"
             plt.savefig(save_path)
 
-        print(f"Evaluation result saved to: {save_path}")
+        logger.info(f"Evaluation result saved to: {save_path}")
         plt.close("all")
 
     return predict_mask
@@ -132,4 +133,4 @@ def inference_test(
         times.append(end_time - start_time)
 
     avg_time = sum(times) / num_runs
-    print(f"Average inference time: {avg_time:.6f} seconds")
+    logger.info(f"Average inference time: {avg_time:.6f} seconds")
