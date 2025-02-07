@@ -267,6 +267,7 @@ class ForestTypesDataset:
                     for key, class_info in CLASS_NAME.items():
                         class_name = class_info["name"]
                         threshold = class_info["threshold"]
+                        class_value = int(round(threshold * 255))
                         mask_geojson_path = geojson_mask_paths.get(class_name)
 
                         with open(mask_geojson_path) as f:
@@ -277,7 +278,7 @@ class ForestTypesDataset:
                         )
                         # For each pixel where the class mask is present, set the combined mask to the class_value.
                         # If masks overlap, we take the maximum value.
-                        combined_mask = np.maximum(combined_mask, ((class_mask > 0).astype(np.uint8)) * threshold)
+                        combined_mask = np.maximum(combined_mask, ((class_mask > 0).astype(np.uint8)) * class_value)
 
                     generated_samples = 0
                     not_found = 0
