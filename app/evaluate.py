@@ -64,19 +64,26 @@ def predict_sample_from_dataset(
         brightness_factor = 3
         brightened_rgb = np.clip(normalized_rgb * brightness_factor, 0, 1)
 
+        if len(predict_mask.shape) == 3:
+            predict_mask = (np.clip(predict_mask, 0, 1) > 0.5).astype(np.uint8)
+            if predict_mask.shape[0] > 1:
+                predict_mask = np.max(predict_mask[1:], axis=0)
+            ground_truth_tensor = np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75)
+        else:
+            predict_mask = predict_mask.clip(0.3, 0.75)
+
         plt.figure(figsize=(12, 6))
         plt.subplot(1, 3, 1)
         plt.imshow(brightened_rgb)
-        plt.imshow(predict_mask.clip(0.3, 0.75), cmap="hot", alpha=0.5)
+        plt.imshow(predict_mask, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Model Mask")
         plt.subplot(1, 3, 2)
         plt.imshow(brightened_rgb)
-        plt.imshow(np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75), cmap="hot", alpha=0.5)
+        plt.imshow(ground_truth_tensor, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Ground Truth Mask")
         plt.subplot(1, 3, 3)
-        ground_truth = np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75)
-        plt.imshow(ground_truth, cmap="gray")
-        plt.imshow(predict_mask.clip(0.3, 0.75), cmap="hot", alpha=0.5)
+        plt.imshow(ground_truth_tensor, cmap="gray")
+        plt.imshow(predict_mask, cmap="hot", alpha=0.5)
         plt.title("Ground Truth Mask + Model Mask")
         plt.tight_layout()
 
