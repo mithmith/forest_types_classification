@@ -479,12 +479,20 @@ class ForestTypesDataset:
         random.shuffle(mask_files)
 
         for mask_file in mask_files:
-            # Extract sample identifier from the mask filename
             sample_id = mask_file.stem.split("_")[0]
 
             # Load the mask
             with rasterio.open(mask_file) as mask_src:
                 mask = mask_src.read(1)
+
+                classes = [0, 64, 128, 191, 255]
+
+                num_classes = len(classes)
+                H, W = mask.shape[0], mask.shape[1]
+                mask_unpacked = np.zeros([num_classes, H, W], dtype=np.uint8)
+
+                for idx, c in enumerate(classes):
+                    mask_unpacked[idx, :, :] = (mask == c)
 
             # Load and stack all bands for the sample
             band_data = []
@@ -530,7 +538,7 @@ class ForestTypesDataset:
                 plt.show()
 
             # Yield the stacked bands and corresponding mask
-            yield bands_stacked, mask
+            yield bands_stacked, mask_unpacked
 
     def model_summary_structure(self, model, name="model", exclude_nir=False, exclude_fMASK=False):
         sample, mask = next(self.get_next_generated_sample(exclude_nir=exclude_nir, exclude_fMASK=exclude_fMASK))
