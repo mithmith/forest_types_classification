@@ -16,9 +16,6 @@ def calculate_iou(pred_mask: torch.Tensor, true_mask: torch.Tensor, threshold: f
     union = pred_mask.sum() + true_mask.sum() - intersection  # Union area
     iou = intersection / union if union > 0 else 0.0  # IoU formula
 
-    if isinstance(iou, float):
-        return torch.tensor(iou, device=pred_mask.device)
-
     return iou.item()
 
 
@@ -49,7 +46,7 @@ def multi_class_iou_loss(pred: torch.Tensor, target: torch.Tensor, num_classes: 
     pred_softmax = F.softmax(pred, dim=1)
 
     total_loss = 0
-    for idx in range(num_classes):
+    for idx in range(1, num_classes-1):
         pred_cls = pred_softmax[:, idx, :, :]
         target_cls = target[:, idx, :, :]  # Boolean tensor
 
@@ -60,13 +57,13 @@ def multi_class_iou_loss(pred: torch.Tensor, target: torch.Tensor, num_classes: 
         total_loss += (1 - iou.mean())
 
     # Return the average loss over all classes
-    return total_loss / num_classes
+    return total_loss / 3
 
 def calculate_multiclass_iou(outputs: torch.Tensor, targets: torch.Tensor, num_classes: int = 5) -> float:
     preds = outputs.argmax(dim=1)
     targets = targets.argmax(dim=1)
     ious = []
-    for idx in range(1, num_classes):
+    for idx in range(1, num_classes-1):
         pred_cls = (preds == idx)
         target_cls = (targets == idx)
         intersection = (pred_cls & target_cls).sum().float()

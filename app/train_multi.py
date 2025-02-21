@@ -33,7 +33,7 @@ def train_model(
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = multi_class_iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.75)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.7)
     # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     if not hasattr(model, "logs_path"):
@@ -182,8 +182,8 @@ def train_model(
 
                 # Calculate Overall Precision
                 pred_mask = (F.softmax(outputs, dim=1) > 0.5).float()
-                tp = ((pred_mask[:, 1:, :, :] == 1) & (mask_batch[:, 1:, :, :] == 1)).float().sum().item()
-                fp = ((pred_mask[:, 1:, :, :] == 1) & (mask_batch[:, 1:, :, :] == 0)).float().sum().item()
+                tp = ((pred_mask[:, 1:-1, :, :] == 1) & (mask_batch[:, 1:-1, :, :] == 1)).float().sum().item()
+                fp = ((pred_mask[:, 1:-1, :, :] == 1) & (mask_batch[:, 1:-1, :, :] == 0)).float().sum().item()
                 precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
                 total_precision += precision
 
@@ -299,6 +299,8 @@ def train_model(
             iteration=iteration,
         )
 
+        model.train()
+
         val_losses.append(val_metrics.get("loss", 0.0))
         val_ious.append(val_metrics.get("iou", 0.0))
         val_accuracies.append(val_metrics.get("accuracy", 0.0))
@@ -412,8 +414,8 @@ def validate(
 
                 # Calculate Overall Precision
                 pred_mask = (F.softmax(outputs, dim=1) > 0.5).float()
-                tp = ((pred_mask[:, 1:, :, :] == 1) & (mask_batch[:, 1:, :, :] == 1)).float().sum().item()
-                fp = ((pred_mask[:, 1:, :, :] == 1) & (mask_batch[:, 1:, :, :] == 0)).float().sum().item()
+                tp = ((pred_mask[:, 1:-1, :, :] == 1) & (mask_batch[:, 1:-1, :, :] == 1)).float().sum().item()
+                fp = ((pred_mask[:, 1:-1, :, :] == 1) & (mask_batch[:, 1:-1, :, :] == 0)).float().sum().item()
                 precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
                 total_precision += precision
 
