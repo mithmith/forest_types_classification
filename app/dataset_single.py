@@ -5,16 +5,19 @@ import re
 import warnings
 from pathlib import Path
 from typing import Generator
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
+import pyproj
 from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
 from scipy.ndimage import rotate
 from shapely.geometry import MultiPolygon, Polygon, shape
+from shapely.ops import transform
 from torchsummary import summary
 from torchview import draw_graph
 from torchviz import make_dot
@@ -153,81 +156,77 @@ class ForestTypesDataset:
         maxy = miny + bbox_height
         return BoundingBox(minx, maxx, miny, maxy, 0, 0)
 
-    def normalize_geojson_coordinates(self, geojson_data, img_width, img_height):
+    @staticmethod
+    def get_bbox_from_geojson(geojson_path: Path, target_crs: pyproj.CRS) -> BoundingBox:
         """
-        Normalize GeoJSON coordinates and scale them to image dimensions.
-
-        Args:
-            geojson_data (dict): The GeoJSON data.
-            img_width (int): The width of the image.
-            img_height (int): The height of the image.
-
-        Returns:
-            normalized_polygon (shapely.geometry.Polygon): The polygon scaled to image dimensions.
+        Reads a GeoJSON file, reprojects the geometry from its source CRS
+        (assumed to be EPSG:4326 if not specified) to the target_crs,
+        and extracts the bounding box as a BoundingBox instance.
         """
-        # Extract the bounds of the GeoJSON data
-        feature = geojson_data["features"][0]
-        geometry = shape(feature["geometry"])
-        geo_bounds = geometry.bounds  # (minx, miny, maxx, maxy)
+        with open(geojson_path, "r") as f:
+            geojson_data = json.load(f)
 
-        # Define min and max longitude/latitude (GeoJSON CRS84)
-        min_lon, min_lat, max_lon, max_lat = geo_bounds
+        first_feature = geojson_data["features"][0]
+        geom = shape(first_feature["geometry"])
 
-        # Define the normalization function
-        def normalize(coord, min_val, max_val, scale):
-            return (coord - min_val) / (max_val - min_val) * scale
+        source_crs = pyproj.CRS("EPSG:4326")
 
-        def normalize_polygon(polygon):
-            normalized_coords = []
-            for lon, lat in polygon.exterior.coords:
-                x = normalize(lon, min_lon, max_lon, img_width)  # Normalize longitude
-                y = normalize(lat, min_lat, max_lat, img_height)  # Normalize latitude
-                normalized_coords.append((x, y))
-            return Polygon(normalized_coords)
+        if source_crs != target_crs:
+            transformer = pyproj.Transformer.from_crs(source_crs, target_crs, always_xy=True)
+            geom = transform(transformer.transform, geom)
 
-        if isinstance(geometry, MultiPolygon):
-            normalized_polygons = [normalize_polygon(poly) for poly in geometry.geoms]
-            normalized_geometry = MultiPolygon(normalized_polygons)
-        elif isinstance(geometry, Polygon):
-            normalized_geometry = normalize_polygon(geometry)
+        minx, miny, maxx, maxy = geom.bounds
+        return BoundingBox(minx, maxx, miny, maxy, 0, 0)
 
-        return normalized_geometry
-
-    def get_random_bbox_within_crop_bbox(
-        self, width: int, height: int, bbox_shape: tuple[int, int], normalized_polygon
-    ) -> BoundingBox:
+    @staticmethod
+    def warp_image_to_temp(src_image_path: Path, crop_bbox: BoundingBox, temp_folder: Path) -> Path:
         """
-        Generate a random bounding box constrained by a GeoJSON bounding area.
-
-        Args:
-            width (int): Width of the image.
-            height (int): Height of the image.
-            bbox_shape (tuple[int, int]): Width and height of the bounding box.
-        Returns:
-            BoundingBox: Randomly generated bounding box within the constrained area.
+        Crops the source image using crop_bbox (in the image's pixel coordinate space)
+        and saves it to a temporary folder.
         """
+        temp_folder.mkdir(exist_ok=True)
+        temp_output = temp_folder / f"{src_image_path.stem}_cropped.tif"
 
-        # Extract the geometry and get bounds
-        minx, miny, maxx, maxy = normalized_polygon.bounds
+        with rasterio.Env(GDAL_PAM_ENABLED="NO"):
+            with rasterio.open(src_image_path) as src:
+                # Convert crop_bbox from map coordinates to pixel indices.
+                row_min, col_min = src.index(crop_bbox.minx, crop_bbox.maxy)
+                row_max, col_max = src.index(crop_bbox.maxx, crop_bbox.miny)
 
-        # Convert GeoJSON bounds to image coordinates
-        bbox_width, bbox_height = bbox_shape
+                if row_min > row_max:
+                    row_min, row_max = row_max, row_min
+                if col_min > col_max:
+                    col_min, col_max = col_max, col_min
 
-        # Ensure the random bounding box fits inside the normalized polygon
-        max_x = max(0, int(maxx) - bbox_width)
-        max_y = max(0, int(maxy) - bbox_height)
+                window_height = row_max - row_min
+                window_width = col_max - col_min
 
-        # Generate random coordinates within the constraints
-        rand_x = random.randint(int(minx), max_x) if max_x > minx else int(minx)
-        rand_y = random.randint(int(miny), max_y) if max_y > miny else int(miny)
+                if window_width <= 0 or window_height <= 0:
+                    raise ValueError(
+                        f"Invalid crop window dimensions: width={window_width}, height={window_height}. "
+                        "Ensure that the GeoJSON crop box overlaps the image area and is reprojected to the image's CRS."
+                    )
 
-        # Calculate the bottom-right corner
-        maxx = rand_x + bbox_width
-        maxy = rand_y + bbox_height
+                window = Window(col_off=col_min, row_off=row_min, width=window_width, height=window_height)
+                transform = src.window_transform(window)
 
-        return BoundingBox(rand_x, maxx, rand_y, maxy, 0, 0)
+                cropped_data = src.read(1, window=window)
+                profile = src.profile.copy()
+                profile.update({
+                    "height": window_height,
+                    "width": window_width,
+                    "transform": transform,
+                    "driver": "GTiff",
+                    "compress": "lzw",
+                    "tiled": True,
+                })
 
-    def generate_dataset(self, target_samples: int = 100):
+                with rasterio.open(temp_output, "w", **profile) as dst:
+                    dst.write(cropped_data, 1)
+
+        return temp_output
+
+    def generate_dataset(self, temp_folder: Path):
         if self.generated_dataset_path is None:
             raise ValueError("Generate dataset path is required")
         if not self.geojson_files:
@@ -237,48 +236,65 @@ class ForestTypesDataset:
         if num_images == 0:
             raise ValueError("No images found to generate samples from.")
 
-        samples_per_image = target_samples // num_images
-
         total_samples = 0
 
-        with tqdm(total=target_samples, desc="Generating Samples", unit="sample") as pbar:
-            while total_samples < target_samples:
-                for img_file in self.images_files:
-                    geojson_mask_path = self.find_geojson_path_for_img(img_file)
-                    if geojson_mask_path is None:
-                        logger.info(f"Mask not found for image {img_file}, skipping.")
-                        continue
+        with tqdm(total=num_images, desc="Images processed", unit="image") as pbar:
+            for img_file in self.images_files:
+                full_img_path = self.sentinel_root / img_file
 
-                    transform_matrix, img_width, img_height, crs = self.get_info_from_img(img_file)
-                    with open(geojson_mask_path) as f:
-                        geojson_dict = json.load(f)
+                geojson_mask_path = self.find_geojson_path_for_img(img_file)
+                if geojson_mask_path is None:
+                    logger.info(f"Mask not found for image {img_file}, skipping.")
+                    pbar.update(1)
+                    continue
 
-                    mask = geo_mask.mask_from_geojson(geojson_dict, (img_height, img_width), transform_matrix, crs)
-
-                    generated_samples = 0
-                    not_found = 0
+                if self.crop_bboxes_dir is not None:
                     region_bbox = img_file.split("_")[-2]
-                    if self.crop_bboxes_dir is not None:
-                        image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + ".geojson")
-                        if image_crop_bbox_path.exists():
-                            with open(image_crop_bbox_path, "r") as f:
-                                geojson_data = json.load(f)
-                                normalized_polygon = self.normalize_geojson_coordinates(
-                                    geojson_data, img_width, img_height
-                                )
+                    image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + ".geojson")
+                    if image_crop_bbox_path.exists():
+                        with rasterio.open((full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")) as src:
+                            target_crs = src.crs
+                        crop_bbox = self.get_bbox_from_geojson(image_crop_bbox_path, target_crs)
+                        cropped_img_path = self.warp_image_to_temp((full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"), crop_bbox, temp_folder)
+                        using_temp = True
+                else:
+                    cropped_img_path = full_img_path
+                    using_temp = False
 
-                    while generated_samples < samples_per_image:
-                        if image_crop_bbox_path is not None and image_crop_bbox_path.exists():
-                            box = self.get_random_bbox_within_crop_bbox(
-                                img_width, img_height, self.image_shape, normalized_polygon
-                            )
-                        else:
-                            box = self.get_random_bbox(img_width, img_height, self.image_shape)
-                        mask_region = mask[box.miny : box.maxy, box.minx : box.maxx]
+                with rasterio.open(cropped_img_path) as src:
+                    cropped_width, cropped_height = src.width, src.height
+                    transform_matrix = src.transform
+                    crs = src.crs
+
+                with open(geojson_mask_path) as f:
+                    geojson_dict = json.load(f)
+
+                # Create the mask for the cropped image.
+                mask = geo_mask.mask_from_geojson(geojson_dict, (cropped_height, cropped_width), transform_matrix, crs)
+                if mask is None:
+                    logger.info(f"Mask is empty for image {img_file}, skipping.")
+                    if using_temp and temp_folder.exists():
+                        shutil.rmtree(temp_folder)
+                    pbar.update(1)
+                    continue
+
+                samples_per_slice = (cropped_width // 512) * (cropped_height // 512) * 4
+                logger.info(f"For image {img_file}, computed samples_per_slice: {samples_per_slice}")
+
+                generated_samples = 0
+                not_found = 0
+
+                with tqdm(total=samples_per_slice, desc="Generating Samples", unit="sample", position=0, leave=True) as sub_pbar:
+                    while generated_samples < samples_per_slice:
+                        box = self.get_random_bbox(cropped_width, cropped_height, self.image_shape)
+                        mask_region = mask[box.miny:box.maxy, box.minx:box.maxx]
                         if np.count_nonzero(mask_region) <= 1000:
                             not_found += 1
                             if not_found > 500:
-                                logger.info("Not found anything after 500 attempts, skipping to next image...")
+                                logger.info("Not found enough valid regions after 500 attempts, moving to next image...")
+                                if using_temp and temp_folder.exists():
+                                    shutil.rmtree(temp_folder)
+                                pbar.update(1)
                                 break
                             continue
 
@@ -287,25 +303,36 @@ class ForestTypesDataset:
                         cropped_transform_matrix = window_transform(
                             Window(box.minx, box.miny, box.width, box.height), transform_matrix
                         )
+                        self.save_mask(mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path)
 
-                        self.save_mask(
-                            mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path
-                        )
-
+                        # Process each band from the cropped image.
                         for band_key, band_regex in self.bands_regex_list.items():
                             band_path = self.get_band_images(self.sentinel_root / img_file, band_regex)
                             if band_path.exists():
-                                crop_output_path = self.generated_dataset_path / f"{rnd_num}_{band_key}.tif"
-                                self.save_cropped_region(band_path, box, crop_output_path)
+                                if self.crop_bboxes_dir is not None and image_crop_bbox_path.exists():
+                                    if not (temp_folder / f"{band_path.stem}_cropped.tif").exists():
+                                        cropped_band_path = self.warp_image_to_temp(band_path, crop_bbox, temp_folder)
+                                    else:
+                                        cropped_band_path = temp_folder / f"{band_path.stem}_cropped.tif"
+                                    crop_output_path = self.generated_dataset_path / f"{rnd_num}_{band_key}.tif"
+                                    self.save_cropped_region(cropped_band_path, box, crop_output_path)
+                                else:
+                                    crop_output_path = self.generated_dataset_path / f"{rnd_num}_{band_key}.tif"
+                                    self.save_cropped_region(band_path, box, crop_output_path)
+                            else:
+                                logger.warning(f"Band file not found for {band_key} in image {img_file}")
 
                         generated_samples += 1
                         total_samples += 1
-                        pbar.update(1)
+                        sub_pbar.update(1)
 
-                        if total_samples >= target_samples:
-                            break
+                logger.info(f"Total samples generated from image {img_file}: {generated_samples}")
 
-        logger.info(f"Total samples generated: {total_samples}")
+                if using_temp and temp_folder.exists():
+                    shutil.rmtree(temp_folder)
+                pbar.update(1)
+
+            logger.info(f"Total samples generated: {total_samples}")
 
     @staticmethod
     def get_band_images(img_path: Path, band_regex: str) -> Path:

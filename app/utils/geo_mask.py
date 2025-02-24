@@ -48,6 +48,13 @@ def mask_from_geojson(geojson_data: dict, mask_shape: tuple[int, int], transform
     Returns:
         np.ndarray: Объединённая бинарная маска.
     """
+    features = geojson_data.get("features", [])
+    geometries = [shape(feature["geometry"]) for feature in features if feature.get("geometry") is not None]
+
+    # Если геометрии отсутствуют, возвращаем None, чтобы можно было пропустить это изображение.
+    if not geometries:
+        return None
+
     # Преобразуем GeoJSON в GeoDataFrame
     geo_df = gpd.GeoDataFrame.from_features(geojson_data["features"])
 
