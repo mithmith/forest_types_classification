@@ -294,7 +294,6 @@ class ForestTypesDataset:
                                 logger.info("Not found enough valid regions after 500 attempts, moving to next image...")
                                 if using_temp and temp_folder.exists():
                                     shutil.rmtree(temp_folder)
-                                pbar.update(1)
                                 break
                             continue
 
