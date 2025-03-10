@@ -32,7 +32,7 @@ def train_model(
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.75)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.82)
     # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     if not hasattr(model, "logs_path"):
@@ -294,6 +294,8 @@ def train_model(
             iteration=iteration,
         )
 
+        model.train()
+
         val_losses.append(val_metrics.get("loss", 0.0))
         val_ious.append(val_metrics.get("iou", 0.0))
         val_accuracies.append(val_metrics.get("accuracy", 0.0))
@@ -325,6 +327,7 @@ def train_model(
         "Input data type": str(input_data_type),
         "Model Output Shape": str(output_tensor.shape),
         "Batch Size": batch_size,
+        "Loss Function": loss_function_name,
         "Initial Learning Rate": learning_rate,
         "Optimizer Name": {optimizer_name},
         "Scheduler Name": {scheduler_name},
