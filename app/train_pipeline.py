@@ -35,10 +35,10 @@ damage_prefixes = ["_burns", "_deforestation", "_drying"]
 for damage_prefix in damage_prefixes:
     # Dataset paths
     dataset_geojson_masks_dir = path_prefix.joinpath(f"forest_changes_dataset/masks{damage_prefix}")
-    sentinel_root_dir = path_prefix.joinpath(f"forest_changes_dataset/images{damage_prefix}")
+    sentinel_root_dir = path_prefix.joinpath(f"forest_changes_dataset/images")
     crop_bboxes_dir = path_prefix.joinpath(f"forest_changes_dataset/crop_bboxes")
-    train_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/train")
-    val_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}_RGBNIRSWIR/validation")
+    train_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}/train")
+    val_path = path_prefix.joinpath(f"forest_changes_dataset/generated_dataset{damage_prefix}/validation")
 
     forest_model_path = Path("../forest_model_v8.dat")
 
@@ -58,8 +58,10 @@ for damage_prefix in damage_prefixes:
     )
 
     # Generate dataset
-    # train_dataset.generate_dataset(4500)
-    # exit()
+    temp_folder = Path("G:/Orni_forest/forest_changes_dataset/temp_folder/")
+    train_dataset.generate_dataset(temp_folder)
+
+    continue
 
     # Version and model
     i = 1
