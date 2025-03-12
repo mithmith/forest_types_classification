@@ -1,6 +1,6 @@
+import time
 from datetime import datetime
 from pathlib import Path
-import time
 
 import matplotlib.pyplot as plt
 
@@ -8,11 +8,11 @@ plt.switch_backend("agg")
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
 from loguru import logger
 
-from app.loss import calculate_iou, iou_loss, multi_class_iou_loss, calculate_multiclass_iou
+from app.loss import calculate_iou, calculate_multiclass_iou, iou_loss, multi_class_iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
 
@@ -46,9 +46,9 @@ def train_model(
 
     num_train_samples = len(train_dataset)
     num_val_samples = len(val_dataset)
-    loss_function_name = getattr(criterion, '__name__', str(criterion))
-    optimizer_name = getattr(optimizer, '__name__', str(optimizer))
-    scheduler_name = getattr(lr_scheduler, '__name__', str(lr_scheduler))
+    loss_function_name = getattr(criterion, "__name__", str(criterion))
+    optimizer_name = getattr(optimizer, "__name__", str(optimizer))
+    scheduler_name = getattr(lr_scheduler, "__name__", str(lr_scheduler))
     logger.info(f"Number of training samples: {num_train_samples}")
     logger.info(f"Number of validation samples: {num_val_samples}")
     logger.info(f"Loss Function: {loss_function_name}")
@@ -100,7 +100,12 @@ def train_model(
         foreground_percentage = (total_foreground / total_pixels) * 100
         logger.info(f"Approximate foreground percentage (from 100 samples): {foreground_percentage:.2f}%")
 
-    logger.add(model.logs_path / f"{model_name}_training_logs.log", rotation="1 MB", level="DEBUG", format="{time} {level} {message}")
+    logger.add(
+        model.logs_path / f"{model_name}_training_logs.log",
+        rotation="1 MB",
+        level="DEBUG",
+        format="{time} {level} {message}",
+    )
 
     iteration = 0
     global_iterations = []
@@ -225,7 +230,9 @@ def train_model(
 
                 # Подготовка данных
                 if batch_size > 1:
-                    model_out_mask = F.softmax(outputs, dim=1).detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
+                    model_out_mask = (
+                        F.softmax(outputs, dim=1).detach().cpu().squeeze().numpy()[0]
+                    )  # Предсказанная маска
                     ground_truth_mask = mask_batch.cpu().squeeze().numpy()[0]  # Истинная маска
                     rgb_image = input_batch.cpu().squeeze().numpy()[0, :3]  # Первые три слоя (RGB)
                 else:
@@ -318,12 +325,18 @@ def train_model(
 
     plot_metrics(
         global_iterations,
-        train_losses, val_losses,
-        train_ious, val_ious,
-        train_accuracies, val_accuracies,
-        train_precisions, val_precisions,
-        model.logs_path, model_name, loss_function_name,
-        epochs
+        train_losses,
+        val_losses,
+        train_ious,
+        val_ious,
+        train_accuracies,
+        val_accuracies,
+        train_precisions,
+        val_precisions,
+        model.logs_path,
+        model_name,
+        loss_function_name,
+        epochs,
     )
 
     final_summary = {
@@ -497,16 +510,25 @@ def save_model_summary(summary: dict, logs_path: Path, model_name: str):
     logger.info(f"Training summary saved to {summary_file}")
 
 
-def plot_metrics(iterations, train_losses, val_losses,
-                 train_ious, val_ious,
-                 train_accuracies, val_accuracies,
-                 train_precisions, val_precisions,
-                 logs_path: Path, model_name: str, loss_name: str,
-                 epochs):
+def plot_metrics(
+    iterations,
+    train_losses,
+    val_losses,
+    train_ious,
+    val_ious,
+    train_accuracies,
+    val_accuracies,
+    train_precisions,
+    val_precisions,
+    logs_path: Path,
+    model_name: str,
+    loss_name: str,
+    epochs,
+):
     """Plot epoch-level training and validation curves in one figure."""
     plt.figure(figsize=(12, 10))
     iterations_range = range(1, iterations[-1] + 1)
-    val_iterations_range = range(int(iterations[-1]//epochs), iterations[-1] + 1, int(iterations[-1]//epochs))
+    val_iterations_range = range(int(iterations[-1] // epochs), iterations[-1] + 1, int(iterations[-1] // epochs))
 
     # Loss plot
     plt.subplot(2, 2, 1)
@@ -553,4 +575,3 @@ def plot_metrics(iterations, train_losses, val_losses,
     plt.savefig(metrics_plot_file)
     plt.close()
     logger.info(f"Saved training metrics plot to {metrics_plot_file}")
-

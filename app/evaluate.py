@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 import torch.nn as nn
+from loguru import logger
 from osgeo import gdal
 
 from app.dataset_single import ForestTypesDataset
 from app.train import evaluate, load_model
 from app.utils import veg_index
-from loguru import logger
 
 
 def predict_sample_from_dataset(
@@ -54,34 +54,29 @@ def predict_sample_from_dataset(
 
     if evaluation_dir is not None and evaluation_dir.exists():
         output_img = np.transpose(output_img, (1, 2, 0))
-        normalized_rgb = np.zeros_like(output_img, dtype=np.float32)  # Создаём пустой массив для нормализации
-        for channel in range(output_img.shape[2]):  # По каждому каналу (R, G, B)
-            channel_data = output_img[:, :, channel]
-            normalized_rgb[:, :, channel] = (channel_data - channel_data.min()) / (
-                channel_data.max() - channel_data.min() + 1e-6
-            )  # Добавляем 1e-6 для избежания деления на 0
-        # Increase brightness by scaling up values (factor 1.5 can be adjusted)
-        brightness_factor = 3
-        brightened_rgb = np.clip(normalized_rgb * brightness_factor, 0, 1)
+        brightened_rgb = enhance_rgb(output_img)
 
         if len(predict_mask.shape) == 3:
             predict_mask = (np.clip(predict_mask, 0, 1) > 0.5).astype(np.uint8)
             if predict_mask.shape[0] > 1:
                 predict_mask = np.max(predict_mask[1:], axis=0)
-            ground_truth_tensor = np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75)
         else:
             predict_mask = predict_mask.clip(0.3, 0.75)
+        ground_truth_tensor = np.squeeze(ground_truth_tensor, axis=0).clip(0.3, 0.75)
 
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 3, 1)
+        plt.figure(figsize=(30, 30))
+        plt.subplot(2, 2, 1)
+        plt.imshow(brightened_rgb)
+        plt.title("Original RGB Image")
+        plt.subplot(2, 2, 2)
         plt.imshow(brightened_rgb)
         plt.imshow(predict_mask, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Model Mask")
-        plt.subplot(1, 3, 2)
+        plt.subplot(2, 2, 3)
         plt.imshow(brightened_rgb)
         plt.imshow(ground_truth_tensor, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Ground Truth Mask")
-        plt.subplot(1, 3, 3)
+        plt.subplot(2, 2, 4)
         plt.imshow(ground_truth_tensor, cmap="gray")
         plt.imshow(predict_mask, cmap="hot", alpha=0.5)
         plt.title("Ground Truth Mask + Model Mask")
@@ -98,6 +93,27 @@ def predict_sample_from_dataset(
         plt.close("all")
 
     return predict_mask
+
+
+def enhance_rgb(image, lower_percent=2, upper_percent=98):
+    """
+    Улучшение контраста RGB-изображения через percentile stretching.
+
+    image: np.array формы (H, W, 3)
+    lower_percent, upper_percent: процентили для растяжения
+    """
+    enhanced_image = np.zeros_like(image, dtype=np.float32)
+    for i in range(3):  # R, G, B
+        channel = image[:, :, i]
+        # Рассчитываем нижний и верхний процентили
+        low, high = np.percentile(channel, (lower_percent, upper_percent))
+        # Растягиваем динамический диапазон
+        channel_stretched = np.clip((channel - low) / (high - low + 1e-6), 0, 1)
+        enhanced_image[:, :, i] = channel_stretched
+
+    # Дополнительно повысим яркость и насыщенность
+    enhanced_image = np.clip(enhanced_image * 1.3, 0, 1)
+    return enhanced_image
 
 
 def inference_test(

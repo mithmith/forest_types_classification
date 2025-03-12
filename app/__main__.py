@@ -9,6 +9,10 @@ import torch
 from clearml import Task
 
 from app.dataset_single import ForestTypesDataset
+
+### Проверка работы модели ###
+from app.evaluate import predict_sample_from_dataset
+from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
 from app.utils.veg_index import preprocess_band
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
@@ -91,52 +95,22 @@ from app.utils.veg_index import preprocess_band
 # task.close()
 
 
-# Проверка работы модели
-def predict_sample_from_dataset(dataset_dir: Path, sample_num: int):
-    features_names = ["red", "green", "blue", "nir"]
-    input_tensor = []
-    for feature_name in features_names:
-        with rasterio.open(dataset_dir / f"{sample_num}_{feature_name}.tif") as f:
-            input_tensor.append(preprocess_band(f.read(1)))
-
-    # input_tensor.append(
-    #     train_dataset.create_forest_mask(
-    #         nir_path=dataset_dir / f"{sample_num}_nir.tif",
-    #         red_path=dataset_dir / f"{sample_num}_red.tif",
-    #         blue_path=dataset_dir / f"{sample_num}_blue.tif",
-    #     )
-    # )
-
-    input_tensor = np.array(input_tensor)
-    model = ResNet50_RGB_NIR_Model(num_classes=1)
-    model.load_model(
-        f"G:/Orni_forest/sentinel_forest_types_classification/ResNet50_RGB_NIR_Model_drying/forest_segmentation_resnet_v{1}.pth"
-    )
-
-    num_runs = 100
-    times = []
-
-    for _ in range(num_runs):
-        start_time = time.perf_counter()
-
-        predict_mask = model.evaluate(input_tensor)
-
-        end_time = time.perf_counter()
-        times.append(end_time - start_time)
-
-    avg_time = sum(times) / num_runs
-    print(f"Average inference time: {avg_time:.6f} seconds")
-
-    # Визуализируем результаты
-    # plt.figure()
-    # plt.subplot(1, 3, 1)
-    # plt.imshow(input_tensor[0], cmap="gray")
-    # plt.subplot(1, 3, 2)
-    # plt.imshow(predict_mask.clip(0.3, 0.75), cmap="gray")
-    # plt.show()
-
-
-dataset_dir = Path("G:/Orni_forest/forest_changes_dataset/generated_dataset/train")
+dataset_dir = Path("../forest_changes_dataset/generated_dataset_deforestation_RGBNIRSWIR/validation")
+output_evaluation_dir = Path("../train_logs")
+model = ResNet50_UNet_NIR(num_classes=1)
+n = 101707
+predict_sample_from_dataset(
+    model,
+    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_deforestation_unfreezed/ResNet50_UNet_NIR_deforestation_unfreezed_v2.pth",
+    n,
+    dataset_dir,
+    None,
+    exclude_nir=False,
+    exclude_fMASK=True,
+    evaluation_dir=output_evaluation_dir,
+    file_name=f"image_{n}.png",
+)
+exit()
 red_tif_files = list(dataset_dir.glob("*_red.tif"))
 random.shuffle(red_tif_files)
 for filename in red_tif_files[:5]:
@@ -145,4 +119,4 @@ for filename in red_tif_files[:5]:
         model, model_save_path.joinpath(f"{model_name}_v{i}.pth"), n, 100, exclude_nir=True, exclude_fMASK=True
     )
 
-task.close()
+# task.close()
