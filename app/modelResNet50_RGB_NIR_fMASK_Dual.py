@@ -127,7 +127,7 @@ class ResNet50_RGB_NIR_fMASK_Dual_Model(nn.Module):
     ):
         self.to(device)
         criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
-        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(self.parameters(), lr=learning_rate, weight_decay=1e-4)
 
         # Размораживаем веса RGB-слоев
         if not freeze_rgb:

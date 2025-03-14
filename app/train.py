@@ -31,7 +31,7 @@ def train_model(
     model.to(device)
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.82)
     # logger.debug(f"Dataset length: {len(train_dataset)}")
 
