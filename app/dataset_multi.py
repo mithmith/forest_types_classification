@@ -492,7 +492,7 @@ class ForestTypesDataset:
                 mask_unpacked = np.zeros([num_classes, H, W], dtype=np.uint8)
 
                 for idx, c in enumerate(classes):
-                    mask_unpacked[idx, :, :] = (mask == c)
+                    mask_unpacked[idx, :, :] = mask == c
 
             # Load and stack all bands for the sample
             band_data = []

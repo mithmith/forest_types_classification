@@ -40,13 +40,14 @@ def iou_loss(pred: torch.Tensor, target: torch.Tensor, smooth: float = 1e-6) -> 
     return 1 - iou.mean()  # Возвращаем 1 - IoU
 
 
-def multi_class_iou_loss(pred: torch.Tensor, target: torch.Tensor, num_classes: int = 5,
-                         smooth: float = 1e-6) -> torch.Tensor:
+def multi_class_iou_loss(
+    pred: torch.Tensor, target: torch.Tensor, num_classes: int = 5, smooth: float = 1e-6
+) -> torch.Tensor:
     # Apply softmax to get class probabilities for each pixel
     pred_softmax = F.softmax(pred, dim=1)
 
     total_loss = 0
-    for idx in range(1, num_classes-1):
+    for idx in range(1, num_classes - 1):
         pred_cls = pred_softmax[:, idx, :, :]
         target_cls = target[:, idx, :, :]  # Boolean tensor
 
@@ -54,18 +55,19 @@ def multi_class_iou_loss(pred: torch.Tensor, target: torch.Tensor, num_classes: 
         union = (pred_cls + target_cls - pred_cls * target_cls).sum(dim=(1, 2))
 
         iou = (intersection + smooth) / (union + smooth)
-        total_loss += (1 - iou.mean())
+        total_loss += 1 - iou.mean()
 
     # Return the average loss over all classes
     return total_loss / 3
+
 
 def calculate_multiclass_iou(outputs: torch.Tensor, targets: torch.Tensor, num_classes: int = 5) -> float:
     preds = outputs.argmax(dim=1)
     targets = targets.argmax(dim=1)
     ious = []
-    for idx in range(1, num_classes-1):
-        pred_cls = (preds == idx)
-        target_cls = (targets == idx)
+    for idx in range(1, num_classes - 1):
+        pred_cls = preds == idx
+        target_cls = targets == idx
         intersection = (pred_cls & target_cls).sum().float()
         union = (pred_cls | target_cls).sum().float()
         if union == 0:

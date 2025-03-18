@@ -2,15 +2,15 @@ import json
 import os
 import random
 import re
+import shutil
 import warnings
 from pathlib import Path
 from typing import Generator
-import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
-import rasterio
 import pyproj
+import rasterio
 from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
@@ -212,14 +212,16 @@ class ForestTypesDataset:
 
                 cropped_data = src.read(1, window=window)
                 profile = src.profile.copy()
-                profile.update({
-                    "height": window_height,
-                    "width": window_width,
-                    "transform": transform,
-                    "driver": "GTiff",
-                    "compress": "lzw",
-                    "tiled": True,
-                })
+                profile.update(
+                    {
+                        "height": window_height,
+                        "width": window_width,
+                        "transform": transform,
+                        "driver": "GTiff",
+                        "compress": "lzw",
+                        "tiled": True,
+                    }
+                )
 
                 with rasterio.open(temp_output, "w", **profile) as dst:
                     dst.write(cropped_data, 1)
@@ -252,10 +254,16 @@ class ForestTypesDataset:
                     region_bbox = img_file.split("_")[-2]
                     image_crop_bbox_path = self.crop_bboxes_dir.joinpath("crop_bbox_" + region_bbox + ".geojson")
                     if image_crop_bbox_path.exists():
-                        with rasterio.open((full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")) as src:
+                        with rasterio.open(
+                            (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                        ) as src:
                             target_crs = src.crs
                         crop_bbox = self.get_bbox_from_geojson(image_crop_bbox_path, target_crs)
-                        cropped_img_path = self.warp_image_to_temp((full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"), crop_bbox, temp_folder)
+                        cropped_img_path = self.warp_image_to_temp(
+                            (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"),
+                            crop_bbox,
+                            temp_folder,
+                        )
                         using_temp = True
                     else:
                         cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
@@ -287,14 +295,18 @@ class ForestTypesDataset:
                 generated_samples = 0
                 not_found = 0
 
-                with tqdm(total=samples_per_slice, desc="Generating Samples", unit="sample", position=0, leave=True) as sub_pbar:
+                with tqdm(
+                    total=samples_per_slice, desc="Generating Samples", unit="sample", position=0, leave=True
+                ) as sub_pbar:
                     while generated_samples < samples_per_slice:
                         box = self.get_random_bbox(cropped_width, cropped_height, self.image_shape)
-                        mask_region = mask[box.miny:box.maxy, box.minx:box.maxx]
+                        mask_region = mask[box.miny : box.maxy, box.minx : box.maxx]
                         if np.count_nonzero(mask_region) <= 1000:
                             not_found += 1
                             if not_found > 500:
-                                logger.info("Not found enough valid regions after 500 attempts, moving to next image...")
+                                logger.info(
+                                    "Not found enough valid regions after 500 attempts, moving to next image..."
+                                )
                                 if using_temp and temp_folder.exists():
                                     shutil.rmtree(temp_folder)
                                 break
@@ -305,7 +317,9 @@ class ForestTypesDataset:
                         cropped_transform_matrix = window_transform(
                             Window(box.minx, box.miny, box.width, box.height), transform_matrix
                         )
-                        self.save_mask(mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path)
+                        self.save_mask(
+                            mask_region, box.height, box.width, cropped_transform_matrix, crs, crop_mask_path
+                        )
 
                         # Process each band from the cropped image.
                         for band_key, band_regex in self.bands_regex_list.items():
