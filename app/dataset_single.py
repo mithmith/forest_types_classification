@@ -257,8 +257,11 @@ class ForestTypesDataset:
                         crop_bbox = self.get_bbox_from_geojson(image_crop_bbox_path, target_crs)
                         cropped_img_path = self.warp_image_to_temp((full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"), crop_bbox, temp_folder)
                         using_temp = True
+                    else:
+                        cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                        using_temp = False
                 else:
-                    cropped_img_path = full_img_path
+                    cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
                     using_temp = False
 
                 with rasterio.open(cropped_img_path) as src:
