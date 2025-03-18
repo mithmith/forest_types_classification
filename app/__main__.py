@@ -95,23 +95,25 @@ from app.utils.veg_index import preprocess_band
 # task.close()
 
 
-dataset_dir = Path("../forest_changes_dataset/generated_dataset_deforestation_RGBNIRSWIR/validation")
-output_evaluation_dir = Path("../train_logs")
+dataset_dir = Path("../forest_changes_dataset/generated_dataset_burns/train")
+output_evaluation_dir = Path("../train_logs/burns_NIR")
 model = ResNet50_UNet_NIR(num_classes=1)
-n = 101707
+red_tif_files = list(dataset_dir.glob("*_red.tif"))
+nums = [] or [int(fname.name.split("_")[0]) for fname in red_tif_files]
+
 predict_sample_from_dataset(
     model,
-    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_deforestation_unfreezed/ResNet50_UNet_NIR_deforestation_unfreezed_v2.pth",
-    n,
+    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_burns/ResNet50_UNet_NIR_burns_unfreezed_v4.pth",
+    nums,
     dataset_dir,
-    None,
+    Path("D:/usr/T1-GIS/sentinel_forest_segmentation/forest_segm_xgboost_v8_16-12-2024.dat"),
     exclude_nir=False,
     exclude_fMASK=True,
     evaluation_dir=output_evaluation_dir,
-    file_name=f"image_{n}.png",
+    file_name=f"image",
 )
 exit()
-red_tif_files = list(dataset_dir.glob("*_red.tif"))
+
 random.shuffle(red_tif_files)
 for filename in red_tif_files[:5]:
     n = filename.stem.split("_")[0]
