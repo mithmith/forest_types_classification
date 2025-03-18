@@ -399,8 +399,8 @@ class ForestTypesDataset:
 
     @staticmethod
     def add_random_rotation_and_flip(
-        bands_1: list[np.ndarray], bands_2: list[np.ndarray], mask: np.ndarray
-    ) -> tuple[list[np.ndarray], list[np.ndarray], np.ndarray]:
+        bands: list[np.ndarray], mask: np.ndarray
+    ) -> tuple[list[np.ndarray], np.ndarray]:
         """
         Применяет одинаковые случайные повороты (90°, 180°, 270°) и отражения
         (по вертикали и/или горизонтали) к двум наборам данных и маске.
@@ -412,22 +412,19 @@ class ForestTypesDataset:
         # logger.debug(f"bands_2.shape: {len(bands_2)}, {bands_2[0].shape}")
         # logger.debug(f"mask.shape: {mask.shape}")
         if angle != 0:
-            bands_1 = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands_1]
-            bands_2 = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands_2]
+            bands = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands_1]
             mask = rotate(mask, angle, axes=(0, 1), reshape=False)
 
         # Случайное отражение
         if np.random.rand() > 0.5:  # Отражение по ширине
-            bands_1 = [np.flip(band, axis=1) for band in bands_1]
-            bands_2 = [np.flip(band, axis=1) for band in bands_2]
+            bands = [np.flip(band, axis=1) for band in bands_1]
             mask = np.flip(mask, axis=1)
 
         if np.random.rand() > 0.5:  # Отражение по высоте
-            bands_1 = [np.flip(band, axis=0) for band in bands_1]
-            bands_2 = [np.flip(band, axis=0) for band in bands_2]
+            bands = [np.flip(band, axis=0) for band in bands_1]
             mask = np.flip(mask, axis=0)
 
-        return bands_1, bands_2, mask
+        return bands, mask
 
     @staticmethod
     def prepare_forest_data(input_data: np.ndarray) -> np.ndarray:
@@ -509,6 +506,7 @@ class ForestTypesDataset:
                 band_data.append(
                     self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path)
                 )
+            band_data, mask = self.add_random_rotation_and_flip(band_data, mask)
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")
