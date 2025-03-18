@@ -305,8 +305,8 @@ def train_model(
         current_lr = optimizer.param_groups[0]["lr"]
         logger.info(f"Updated Learning Rate: {current_lr:.6f}")
 
-        # if (epoch + 1) % 5 == 0:
-        # self.save_model(f"forest_resnet_snapshot_{epoch + 1}_{int(avg_loss * 1000)}.pth")
+        if (epoch + 1) % 10 == 0:
+            save_model(model, f"{model_name}_snapshot_epoch_{epoch + 1}.pth")
 
     overall_end_time = time.time()
     total_training_time = overall_end_time - overall_start_time
