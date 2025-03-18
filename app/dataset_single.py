@@ -426,16 +426,16 @@ class ForestTypesDataset:
         # logger.debug(f"bands_2.shape: {len(bands_2)}, {bands_2[0].shape}")
         # logger.debug(f"mask.shape: {mask.shape}")
         if angle != 0:
-            bands = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands_1]
+            bands = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands]
             mask = rotate(mask, angle, axes=(0, 1), reshape=False)
 
         # Случайное отражение
         if np.random.rand() > 0.5:  # Отражение по ширине
-            bands = [np.flip(band, axis=1) for band in bands_1]
+            bands = [np.flip(band, axis=1) for band in bands]
             mask = np.flip(mask, axis=1)
 
         if np.random.rand() > 0.5:  # Отражение по высоте
-            bands = [np.flip(band, axis=0) for band in bands_1]
+            bands = [np.flip(band, axis=0) for band in bands]
             mask = np.flip(mask, axis=0)
 
         return bands, mask
