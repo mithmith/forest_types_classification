@@ -222,44 +222,6 @@ def train_model(
                         title="Metrics", series="Train Average Precision", value=avg_precision, iteration=iteration
                     )
 
-                # Подготовка данных
-                if batch_size > 1:
-                    model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
-                    ground_truth_mask = mask_batch.cpu().squeeze().numpy()[0]  # Истинная маска
-                    rgb_image = input_batch.cpu().squeeze().numpy()[0, :3]  # Первые три слоя (RGB)
-                else:
-                    model_out_mask = outputs.detach().cpu().squeeze().numpy()
-                    ground_truth_mask = mask_batch.cpu().squeeze().numpy()
-                    rgb_image = input_batch.cpu().squeeze().numpy()[:3]
-
-                # Нормализация RGB-данных для визуализации
-                # logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
-                normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)))
-                predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
-                rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
-
-                # Построение визуализаций
-                plt.figure(figsize=(12, 6))
-                plt.subplot(1, 3, 1)
-                plt.imshow(rgb_uint8)
-                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
-                plt.title("RGB Image + Model Mask")
-                plt.subplot(1, 3, 2)
-                plt.imshow(rgb_uint8)
-                plt.imshow(ground_truth_mask, cmap="hot", alpha=0.5)
-                plt.title("RGB Image + Ground Truth Mask")
-                plt.subplot(1, 3, 3)
-                plt.imshow(ground_truth_mask, cmap="gray")
-                plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
-                plt.title("Ground Truth Mask + Model Mask")
-                plt.tight_layout()
-
-                # Сохранение изображения
-                if not model.logs_path.exists():
-                    model.logs_path.mkdir(parents=True, exist_ok=True)
-                plt.savefig(model.logs_path / f"train_{epoch + 1}_{iteration}_{int(avg_loss * 10000)}.png")
-                # plt.show()
-                plt.close("all")
             elif (i + 1) % 25 == 0:
                 avg_loss = running_loss / total_samples
                 avg_iou = total_iou / total_samples
@@ -281,6 +243,45 @@ def train_model(
             f"Epoch [{epoch + 1}/{epochs}] Summary: Avg Loss: {avg_loss:.6f}, "
             f"Avg IoU: {avg_iou:.6f}, Avg Accuracy: {avg_accuracy:.6f}, Avg Precision: {avg_precision:.6f}"
         )
+
+        # Подготовка данных
+        if batch_size > 1:
+            model_out_mask = outputs.detach().cpu().squeeze().numpy()[0]  # Предсказанная маска
+            ground_truth_mask = mask_batch.cpu().squeeze().numpy()[0]  # Истинная маска
+            rgb_image = input_batch.cpu().squeeze().numpy()[0, :3]  # Первые три слоя (RGB)
+        else:
+            model_out_mask = outputs.detach().cpu().squeeze().numpy()
+            ground_truth_mask = mask_batch.cpu().squeeze().numpy()
+            rgb_image = input_batch.cpu().squeeze().numpy()[:3]
+
+        # Нормализация RGB-данных для визуализации
+        # logger.debug(f"Размерность rgb_image перед обработкой: {rgb_image.shape}")
+        normalized_rgb = min_max_normalize_with_clipping(np.transpose(rgb_image, (1, 2, 0)))
+        predicted_mask = (np.clip(model_out_mask, 0, 1) > 0.5).astype(np.uint8)
+        rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
+
+        # Построение визуализаций
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 3, 1)
+        plt.imshow(rgb_uint8)
+        plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
+        plt.title("RGB Image + Model Mask")
+        plt.subplot(1, 3, 2)
+        plt.imshow(rgb_uint8)
+        plt.imshow(ground_truth_mask, cmap="hot", alpha=0.5)
+        plt.title("RGB Image + Ground Truth Mask")
+        plt.subplot(1, 3, 3)
+        plt.imshow(ground_truth_mask, cmap="gray")
+        plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
+        plt.title("Ground Truth Mask + Model Mask")
+        plt.tight_layout()
+
+        # Сохранение изображения
+        if not model.logs_path.exists():
+            model.logs_path.mkdir(parents=True, exist_ok=True)
+        plt.savefig(model.logs_path / f"train_{epoch + 1}_{iteration}_{int(avg_loss * 10000)}.png")
+        # plt.show()
+        plt.close("all")
 
         val_metrics = validate(
             model,
