@@ -351,13 +351,6 @@ class ForestTypesDataset:
     def get_band_images(img_path: Path, band_regex: str) -> Path:
         """
         Находит и возвращает пути к файлам заданного бэнда в папках img_path.
-
-        Args:
-            img_path (Path): Путь к первой папке со снимком.
-            band_regex (str): Регулярное выражение для поиска файлов бэнда.
-
-        Returns:
-            Tuple[Path, Path]: Пути к файлам бэнда в img1_path и img2_path.
         """
         pattern = re.compile(band_regex)
 
@@ -367,9 +360,7 @@ class ForestTypesDataset:
                     return file
             raise FileNotFoundError(f"Файл для бэнда не найден в папке: {folder_path}")
 
-        # Найти файлы бэнда в обеих папках
         tif_path = find_band_file(img_path)
-
         return tif_path
 
     @staticmethod
