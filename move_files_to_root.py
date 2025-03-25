@@ -95,14 +95,19 @@ def save_new_band(bands_path: Path):
                 with rasterio.open(band_path) as src:
                     profile = src.profile
             else:
-                band, _ = veg_index.read_band(band_path)
-                band_resized = resize(band, red_image_shape)
-                if "20m" in str(band_path):
-                    output_path = str(band_path).replace("20m", "10m")
+                if Path(str(band_path).replace("20m", "10m")).exists():
+                    band, _ = veg_index.read_band(Path(str(band_path).replace("20m", "10m")))
                 else:
-                    output_path = str(band_path)
-                with rasterio.open(output_path, "w", **profile) as dst:
-                    dst.write(band_resized, 1)
+                    band, _ = veg_index.read_band(band_path)
+                if band.shape != red_image_shape:
+                    band_resized = resize(band, red_image_shape)
+                    if "20m" in str(band_path):
+                        output_path = str(band_path).replace("20m", "10m")
+                    else:
+                        output_path = str(band_path)
+                    logger.info(f"Preprocessing {band_key}: {output_path}")
+                    with rasterio.open(output_path, "w", **profile) as dst:
+                        dst.write(band_resized, 1)
 
 
 if __name__ == "__main__":
@@ -110,5 +115,4 @@ if __name__ == "__main__":
     root_folder = Path("G:/Orni_forest/forest_changes_dataset/images_test/")
     for folder in root_folder.glob("*.SAFE/"):
         move_files_to_root(folder)
-        logger.info(f"Preprocessing B11/B12: {folder}")
         save_new_band(Path(folder))
