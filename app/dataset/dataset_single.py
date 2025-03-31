@@ -266,10 +266,10 @@ class ForestTypesDataset:
                         )
                         using_temp = True
                     else:
-                        cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                        cropped_img_path = full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"
                         using_temp = False
                 else:
-                    cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                    cropped_img_path = full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"
                     using_temp = False
 
                 with rasterio.open(cropped_img_path) as src:
@@ -403,9 +403,7 @@ class ForestTypesDataset:
         return np.clip(noisy_image, 0, 1)
 
     @staticmethod
-    def add_random_rotation_and_flip(
-        bands: list[np.ndarray], mask: np.ndarray
-    ) -> tuple[list[np.ndarray], np.ndarray]:
+    def add_random_rotation_and_flip(bands: list[np.ndarray], mask: np.ndarray) -> tuple[list[np.ndarray], np.ndarray]:
         """
         Применяет одинаковые случайные повороты (90°, 180°, 270°) и отражения
         (по вертикали и/или горизонтали) к двум наборам данных и маске.

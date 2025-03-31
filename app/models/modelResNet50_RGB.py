@@ -1,13 +1,8 @@
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision.models as models
-
-from app.dataset_single import ForestTypesDataset
 
 
 class ResNet50_RGB_Model(nn.Module):

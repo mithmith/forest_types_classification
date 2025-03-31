@@ -7,8 +7,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
 
-from app.dataset_dual import ForestTypesDataset
-
 
 class ResNet50_RGB_NIR_fMASK_Dual_Model(nn.Module):
     def __init__(self, num_classes: int, freeze_encoder: bool = True):
