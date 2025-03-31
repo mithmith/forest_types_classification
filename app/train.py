@@ -33,7 +33,7 @@ def train_model(
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.82)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.85)
     # logger.debug(f"Dataset length: {len(train_dataset)}")
 
     if not hasattr(model, "logs_path"):
@@ -267,16 +267,19 @@ def train_model(
         rgb_uint8 = np.clip(normalized_rgb * 255, 0, 255).astype(np.uint8)
 
         # Построение визуализаций
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 3, 1)
+        plt.figure(figsize=(30, 30))
+        plt.subplot(2, 2, 1)
+        plt.imshow(rgb_uint8)
+        plt.title("Original RGB Image")
+        plt.subplot(2, 2, 2)
         plt.imshow(rgb_uint8)
         plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Model Mask")
-        plt.subplot(1, 3, 2)
+        plt.subplot(2, 2, 3)
         plt.imshow(rgb_uint8)
         plt.imshow(ground_truth_mask, cmap="hot", alpha=0.5)
         plt.title("RGB Image + Ground Truth Mask")
-        plt.subplot(1, 3, 3)
+        plt.subplot(2, 2, 4)
         plt.imshow(ground_truth_mask, cmap="gray")
         plt.imshow(predicted_mask, cmap="hot", alpha=0.5)
         plt.title("Ground Truth Mask + Model Mask")
