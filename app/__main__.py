@@ -8,11 +8,11 @@ import rasterio
 import torch
 from clearml import Task
 
-from app.dataset_single import ForestTypesDataset
+from app.dataset.dataset_single import ForestTypesDataset
 
 ### Проверка работы модели ###
 from app.evaluate import predict_sample_from_dataset
-from app.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
+from app.models.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
 from app.utils.veg_index import preprocess_band
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"

@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Generator
+from typing import Generator
 
 import matplotlib.pyplot as plt
 import numpy as np

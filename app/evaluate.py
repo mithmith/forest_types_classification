@@ -8,7 +8,7 @@ import torch.nn as nn
 from loguru import logger
 from osgeo import gdal
 
-from app.dataset_single import ForestTypesDataset
+from app.dataset.dataset_single import ForestTypesDataset
 from app.train import evaluate, load_model
 from app.utils import veg_index
 

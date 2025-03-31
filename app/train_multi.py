@@ -1,5 +1,4 @@
 import time
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -12,7 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from loguru import logger
 
-from app.loss import calculate_iou, calculate_multiclass_iou, iou_loss, multi_class_iou_loss
+from app.loss import calculate_multiclass_iou, multi_class_iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
 
