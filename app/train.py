@@ -1,5 +1,4 @@
 import time
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -11,14 +10,15 @@ import torch.nn as nn
 import torch.optim as optim
 from loguru import logger
 
+from app.dataset.dataset_single import ForestTypesDataset
 from app.loss import calculate_iou, iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
 
 def train_model(
     model: nn.Module,
-    train_dataset,
-    val_dataset,
+    train_dataset: ForestTypesDataset,
+    val_dataset: ForestTypesDataset,
     epochs=1,
     batch_size=1,
     learning_rate=0.001,

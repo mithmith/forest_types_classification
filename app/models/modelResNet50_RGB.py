@@ -1,24 +1,19 @@
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision.models as models
 
-from app.dataset_single import ForestTypesDataset
 
-
-class ResNet50_RGB_NIR_Model(nn.Module):
+class ResNet50_RGB_Model(nn.Module):
     def __init__(self, num_classes: int):
-        super(ResNet50_RGB_NIR_Model, self).__init__()
+        super(ResNet50_RGB_Model, self).__init__()
         self.num_classes = num_classes
         self.logs_path = Path("./train_progress_unet")
 
         # Single ResNet encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=4)
+        self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=3)
         self.encoder = nn.Sequential(*list(self.encoder.children())[:-2])  # Remove Average Pooling and FC layers
 
         # Decoder
@@ -71,17 +66,15 @@ class ResNet50_RGB_NIR_Model(nn.Module):
         return out
 
 
-class ResNet50_UNet_NIR(nn.Module):
+class ResNet50_UNet(nn.Module):
     def __init__(self, num_classes: int, freeze_encoder: bool = True):
-        super(ResNet50_UNet_NIR, self).__init__()
+        super(ResNet50_UNet, self).__init__()
         self.num_classes = num_classes
 
-        # Single ResNet encoder
+        # ResNet50 encoder
         self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         if freeze_encoder:
             self.freeze_rgb_layers()  # Вызываем заморозку сразу после загрузки весов
-
-        self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=4)
 
         # Save intermediate features for skip connections
         self.enc1 = nn.Sequential(*list(self.encoder.children())[:3])  # Conv1 + BN + ReLU
@@ -99,21 +92,7 @@ class ResNet50_UNet_NIR(nn.Module):
 
         # Final output layer
         self.final_conv = nn.Conv2d(64, self.num_classes, kernel_size=1)
-
-    def modify_first_layer(self, conv, in_channels: int):
-        """Modify the first convolution layer to accept more channels."""
-        new_conv = nn.Conv2d(
-            in_channels,
-            conv.out_channels,
-            kernel_size=conv.kernel_size,
-            stride=conv.stride,
-            padding=conv.padding,
-            bias=False,
-        )
-        with torch.no_grad():
-            new_conv.weight[:, :3, :, :] = conv.weight  # Copy RGB weights
-            nn.init.kaiming_normal_(new_conv.weight[:, 3:, :, :], mode="fan_out", nonlinearity="relu")
-        return new_conv
+        self.initialize_weights()
 
     def build_decoder_block(self, in_channels, out_channels):
         """Build a single block of the decoder."""
@@ -121,7 +100,6 @@ class ResNet50_UNet_NIR(nn.Module):
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            # nn.Dropout2d(p=0.1),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
@@ -131,6 +109,14 @@ class ResNet50_UNet_NIR(nn.Module):
         # Заморозка всех слоев энкодера для RGB из ResNet50
         for param in self.encoder.parameters():
             param.requires_grad = False
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         # Encoder

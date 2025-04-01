@@ -266,10 +266,10 @@ class ForestTypesDataset:
                         )
                         using_temp = True
                     else:
-                        cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                        cropped_img_path = full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"
                         using_temp = False
                 else:
-                    cropped_img_path = (full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2")
+                    cropped_img_path = full_img_path / f"{region_bbox}_{img_file.split('_')[2]}_B04_10m.jp2"
                     using_temp = False
 
                 with rasterio.open(cropped_img_path) as src:
@@ -354,13 +354,6 @@ class ForestTypesDataset:
     def get_band_images(img_path: Path, band_regex: str) -> Path:
         """
         Находит и возвращает пути к файлам заданного бэнда в папках img_path.
-
-        Args:
-            img_path (Path): Путь к первой папке со снимком.
-            band_regex (str): Регулярное выражение для поиска файлов бэнда.
-
-        Returns:
-            Tuple[Path, Path]: Пути к файлам бэнда в img1_path и img2_path.
         """
         pattern = re.compile(band_regex)
 
@@ -370,9 +363,7 @@ class ForestTypesDataset:
                     return file
             raise FileNotFoundError(f"Файл для бэнда не найден в папке: {folder_path}")
 
-        # Найти файлы бэнда в обеих папках
         tif_path = find_band_file(img_path)
-
         return tif_path
 
     @staticmethod
@@ -412,9 +403,7 @@ class ForestTypesDataset:
         return np.clip(noisy_image, 0, 1)
 
     @staticmethod
-    def add_random_rotation_and_flip(
-        bands: list[np.ndarray], mask: np.ndarray
-    ) -> tuple[list[np.ndarray], np.ndarray]:
+    def add_random_rotation_and_flip(bands: list[np.ndarray], mask: np.ndarray) -> tuple[list[np.ndarray], np.ndarray]:
         """
         Применяет одинаковые случайные повороты (90°, 180°, 270°) и отражения
         (по вертикали и/или горизонтали) к двум наборам данных и маске.

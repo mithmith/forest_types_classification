@@ -5,22 +5,22 @@ from pathlib import Path
 import evaluate
 from clearml import Task
 
-from app.dataset_single import ForestTypesDataset
-from app.MobileNetV3_PSPNet_RGB import MobileNetV3_PSPNet
-from app.MobileNetV3_PSPNet_RGB_NIR import MobileNetV3_PSPNet_NIR
-from app.modelMobileNetV3_UNet import MobileNetV3_UNet
-from app.modelMobileNetV3_UNet_NIR import MobileNetV3_UNet_NIR
-from app.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
-from app.modelResNet50_RGB import ResNet50_RGB_Model, ResNet50_UNet
-from app.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model, ResNet50_UNet_NIR
-from app.modelResNet50_RGB_NIR_fMASK import ResNet50_RGB_NIR_fMASK_Model, ResNet50_UNet_NIR_fMASK
-from app.modelSKResNeXt50_UNet import SKResNeXt50_UNet
-from app.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
-from app.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
-from app.ResNet50_PSPNet_RGB import ResNet50_PSPNet
-from app.ResNet50_PSPNet_RGB_NIR import ResNet50_PSPNet_NIR
-from app.SKResNeXt50_PSPNet_RGB import SKResNeXt50_PSPNet
-from app.SKResNeXt50_PSPNet_RGB_NIR import SKResNeXt50_PSPNet_NIR
+from app.dataset.dataset_single import ForestTypesDataset
+from app.models.MobileNetV3_PSPNet_RGB import MobileNetV3_PSPNet
+from app.models.MobileNetV3_PSPNet_RGB_NIR import MobileNetV3_PSPNet_NIR
+from app.models.modelMobileNetV3_UNet import MobileNetV3_UNet
+from app.models.modelMobileNetV3_UNet_NIR import MobileNetV3_UNet_NIR
+from app.models.modelMobileNetV3_UNet_NIR_fMASK import MobileNetV3_UNet_NIR_fMASK
+from app.models.modelResNet50_RGB import ResNet50_RGB_Model, ResNet50_UNet
+from app.models.modelResNet50_RGB_NIR import ResNet50_RGB_NIR_Model, ResNet50_UNet_NIR
+from app.models.modelResNet50_RGB_NIR_fMASK import ResNet50_RGB_NIR_fMASK_Model, ResNet50_UNet_NIR_fMASK
+from app.models.modelSKResNeXt50_UNet import SKResNeXt50_UNet
+from app.models.modelSKResNeXt50_UNet_NIR import SKResNeXt50_UNet_NIR
+from app.models.modelSKResNeXt50_UNet_NIR_fMASK import SKResNeXt50_UNet_NIR_fMASK
+from app.models.ResNet50_PSPNet_RGB import ResNet50_PSPNet
+from app.models.ResNet50_PSPNet_RGB_NIR import ResNet50_PSPNet_NIR
+from app.models.SKResNeXt50_PSPNet_RGB import SKResNeXt50_PSPNet
+from app.models.SKResNeXt50_PSPNet_RGB_NIR import SKResNeXt50_PSPNet_NIR
 from app.train import load_model, save_model, train_model
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
