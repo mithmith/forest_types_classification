@@ -1,69 +1,6 @@
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 import torchvision.models as models
-
-
-class ResNet50_RGB_NIR_Model(nn.Module):
-    def __init__(self, num_classes: int):
-        super(ResNet50_RGB_NIR_Model, self).__init__()
-        self.num_classes = num_classes
-        self.logs_path = Path("./train_progress_unet")
-
-        # Single ResNet encoder
-        self.encoder = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-        self.encoder.conv1 = self.modify_first_layer(self.encoder.conv1, in_channels=4)
-        self.encoder = nn.Sequential(*list(self.encoder.children())[:-2])  # Remove Average Pooling and FC layers
-
-        # Decoder
-        self.decoder = self.build_decoder(2048)
-
-    def modify_first_layer(self, conv, in_channels: int):
-        # Модификация первого свёрточного слоя для обработки 5 каналов
-        new_conv = nn.Conv2d(
-            in_channels,
-            conv.out_channels,
-            kernel_size=conv.kernel_size,
-            stride=conv.stride,
-            padding=conv.padding,
-            bias=False,
-        )
-
-        # Инициализация весов для первых 3 каналов из предобученной модели
-        with torch.no_grad():
-            new_conv.weight[:, :3, :, :] = conv.weight  # копируем RGB
-            nn.init.kaiming_normal_(new_conv.weight[:, 3:, :, :], mode="fan_out", nonlinearity="relu")
-        return new_conv
-
-    def build_decoder(self, in_channels):
-        return nn.Sequential(
-            nn.ConvTranspose2d(in_channels, 512, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, self.num_classes, kernel_size=1),  # Выходной слой для маски классов
-        )
-
-    def forward(self, x: torch.Tensor):
-        # Encoder forward pass
-        enc_features = []
-        for layer in self.encoder:
-            x = layer(x)
-            enc_features.append(x)
-
-        # Decoder forward pass
-        out = self.decoder(enc_features[-1])
-
-        # Bilinear interpolation to match input size
-        # return nn.functional.interpolate(out, size=(x.shape[2], x.shape[3]), mode="bilinear", align_corners=False)
-        return out
 
 
 class ResNet50_UNet_NIR(nn.Module):

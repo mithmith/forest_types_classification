@@ -13,6 +13,7 @@ from app.dataset.dataset_single import ForestTypesDataset
 ### Проверка работы модели ###
 from app.evaluate import predict_sample_from_dataset
 from app.models.modelResNet50_RGB_NIR import ResNet50_UNet_NIR
+from app.models.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
 from app.utils.veg_index import preprocess_band
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
@@ -96,19 +97,19 @@ from app.utils.veg_index import preprocess_band
 
 
 dataset_dir = Path("../forest_changes_dataset/generated_dataset_burns/train")
-output_evaluation_dir = Path("../train_logs/burns_NIR")
-model = ResNet50_UNet_NIR(num_classes=1)
+output_evaluation_dir = Path("../train_logs/burns_nir_fmask")
+model = ResNet50_UNet_NIR_fMASK(num_classes=1)
 red_tif_files = list(dataset_dir.glob("*_red.tif"))
 nums = [] or [int(fname.name.split("_")[0]) for fname in red_tif_files]
 
 predict_sample_from_dataset(
     model,
-    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_burns/ResNet50_UNet_NIR_burns_unfreezed_v4.pth",
+    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_fMASK_burns_unfreezed_v3.pth",
     nums,
     dataset_dir,
     Path("D:/usr/T1-GIS/sentinel_forest_segmentation/forest_segm_xgboost_v8_16-12-2024.dat"),
     exclude_nir=False,
-    exclude_fMASK=True,
+    exclude_fMASK=False,
     evaluation_dir=output_evaluation_dir,
     file_name=f"image",
 )
