@@ -15,7 +15,6 @@ from loguru import logger
 from rasterio.features import Affine
 from rasterio.windows import Window
 from rasterio.windows import transform as window_transform
-from scipy.ndimage import rotate
 from shapely.geometry import MultiPolygon, Polygon, shape
 from shapely.ops import transform
 from torchsummary import summary
@@ -26,6 +25,14 @@ from xgboost import XGBClassifier
 
 import app.utils.geo_mask as geo_mask
 import app.utils.veg_index as veg_index
+from app.dataset.transform import (
+    add_gaussian_noise,
+    add_random_rotation_and_flip,
+    add_salt_and_pepper_noise,
+    random_haze,
+    random_shift,
+    random_zoom,
+)
 from app.services.base import BoundingBox
 
 # from app.train import evaluate, load_model
@@ -367,69 +374,6 @@ class ForestTypesDataset:
         return tif_path
 
     @staticmethod
-    def add_salt_and_pepper_noise(image: np.ndarray, salt_percent: float, pepper_percent: float) -> np.ndarray:
-        """
-        Добавляет шум типа "соль и перец" к изображению.
-
-        :param image: Входной массив изображения (H, W).
-        :param salt_percent: Доля пикселей, заменяемых на 1 (соль).
-        :param pepper_percent: Доля пикселей, заменяемых на 0 (перец).
-        :return: Изображение с добавленным шумом.
-        """
-        noisy_image = image.copy()
-        total_pixels = image.size
-
-        # Случайные индексы для соли
-        num_salt = int(total_pixels * salt_percent)
-        salt_coords = (np.random.randint(0, image.shape[0], num_salt), np.random.randint(0, image.shape[1], num_salt))
-
-        # Случайные индексы для перца
-        num_pepper = int(total_pixels * pepper_percent)
-        pepper_coords = (
-            np.random.randint(0, image.shape[0], num_pepper),
-            np.random.randint(0, image.shape[1], num_pepper),
-        )
-
-        # Добавляем шум
-        noisy_image[salt_coords] = 1  # Соль
-        noisy_image[pepper_coords] = 0  # Перец
-
-        return noisy_image
-
-    @staticmethod
-    def add_gaussian_noise(image: np.ndarray, std_dev: float = 0.01) -> np.ndarray:
-        noise = np.random.normal(0, std_dev, image.shape)
-        noisy_image = image + noise
-        return np.clip(noisy_image, 0, 1)
-
-    @staticmethod
-    def add_random_rotation_and_flip(bands: list[np.ndarray], mask: np.ndarray) -> tuple[list[np.ndarray], np.ndarray]:
-        """
-        Применяет одинаковые случайные повороты (90°, 180°, 270°) и отражения
-        (по вертикали и/или горизонтали) к двум наборам данных и маске.
-        """
-        # Случайный поворот
-        angle = np.random.choice([0, 90, 180, 270])
-        # logger.debug(f"Angle of rotation: {angle}")
-        # logger.debug(f"bands_1.shape: {len(bands_1)}, {bands_1[0].shape}")
-        # logger.debug(f"bands_2.shape: {len(bands_2)}, {bands_2[0].shape}")
-        # logger.debug(f"mask.shape: {mask.shape}")
-        if angle != 0:
-            bands = [rotate(band, angle, axes=(0, 1), reshape=False) for band in bands]
-            mask = rotate(mask, angle, axes=(0, 1), reshape=False)
-
-        # Случайное отражение
-        if np.random.rand() > 0.5:  # Отражение по ширине
-            bands = [np.flip(band, axis=1) for band in bands]
-            mask = np.flip(mask, axis=1)
-
-        if np.random.rand() > 0.5:  # Отражение по высоте
-            bands = [np.flip(band, axis=0) for band in bands]
-            mask = np.flip(mask, axis=0)
-
-        return bands, mask
-
-    @staticmethod
     def prepare_forest_data(input_data: np.ndarray) -> np.ndarray:
         """Подготавливает данные для модели."""
         # Теперь форма: (количество_изображений, высота, ширина, количество_каналов)
@@ -498,8 +442,9 @@ class ForestTypesDataset:
                 if band_file.exists():
                     with rasterio.open(band_file) as band_src:
                         band = veg_index.preprocess_band(band_src.read(1))
-                        band = self.add_salt_and_pepper_noise(band, salt_percent=0.01, pepper_percent=0.01)
-                        band = self.add_gaussian_noise(band)
+                        band = add_salt_and_pepper_noise(band, salt_percent=0.01, pepper_percent=0.01)
+                        band = add_gaussian_noise(band)
+                        band = random_haze(band)
                         band_data.append(band)
                 else:
                     logger.warning(f"Missing band file: {band_file}, skipping this sample.")
@@ -509,7 +454,9 @@ class ForestTypesDataset:
                 band_data.append(
                     self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path)
                 )
-            band_data, mask = self.add_random_rotation_and_flip(band_data, mask)
+            band_data, mask = add_random_rotation_and_flip(band_data, mask)
+            band_data, mask = random_shift(band_data, mask)
+            band_data, mask = random_zoom(band_data, mask)
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")
