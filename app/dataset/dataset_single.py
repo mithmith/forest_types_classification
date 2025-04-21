@@ -455,8 +455,8 @@ class ForestTypesDataset:
                     self.create_forest_mask(sample_id, self.generated_dataset_path, self.forest_model_path)
                 )
             band_data, mask = add_random_rotation_and_flip(band_data, mask)
-            band_data, mask = random_shift(band_data, mask)
             band_data, mask = random_zoom(band_data, mask)
+            band_data, mask = random_shift(band_data, mask)
 
             if not band_data:
                 logger.warning(f"No valid bands found for sample {sample_id}, skipping.")
