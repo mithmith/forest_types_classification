@@ -11,6 +11,7 @@ import torch.optim as optim
 from loguru import logger
 
 from app.dataset.dataset_single import ForestTypesDataset
+from app.models.modelResNet50_RGB_NIR_fMASK import ResNet50_UNet_NIR_fMASK
 from app.loss import calculate_iou, iou_loss
 from app.utils.veg_index import min_max_normalize_with_clipping
 
@@ -28,7 +29,6 @@ def train_model(
     clearml_logger=None,
     model_name=None,
 ):
-    model.to(device)
     # criterion = nn.BCEWithLogitsLoss()  # Функция потерь для бинарной сегментации
     criterion = iou_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
@@ -469,9 +469,12 @@ def save_model(model, model_save_path: Path):
     logger.info(f"Model saved to {model_save_path}")
 
 
-def load_model(model, model_load_path: Path):
-    model.load_state_dict(torch.load(model_load_path))
-    print(f"Model loaded from {model_load_path}")
+def load_resnet50_model(model_load_path: Path, device: str = "cpu"):
+    print(f"Loading ResNet U-Net model from {model_load_path}")
+    model = ResNet50_UNet_NIR_fMASK()
+    model.load_weights_adaptively(model_load_path, device=device)
+    model.to(device).eval()
+    print(f"Model ready on {device}")
     return model
 
 

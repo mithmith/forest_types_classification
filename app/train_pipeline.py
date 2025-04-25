@@ -3,6 +3,7 @@ import random
 from pathlib import Path
 
 import evaluate
+import torch
 from clearml import Task
 
 from app.dataset.dataset_single import ForestTypesDataset
@@ -21,7 +22,7 @@ from app.models.ResNet50_PSPNet_RGB import ResNet50_PSPNet
 from app.models.ResNet50_PSPNet_RGB_NIR import ResNet50_PSPNet_NIR
 from app.models.SKResNeXt50_PSPNet_RGB import SKResNeXt50_PSPNet
 from app.models.SKResNeXt50_PSPNet_RGB_NIR import SKResNeXt50_PSPNet_NIR
-from app.train import load_model, save_model, train_model
+from app.train import load_resnet50_model, save_model, train_model
 
 # os.environ["GDAL_DATA"] = os.environ["CONDA_PREFIX"] + r"\Library\share\gdal"
 # os.environ["PROJ_LIB"] = os.environ["CONDA_PREFIX"] + r"\Library\share"
@@ -138,7 +139,8 @@ for damage_prefix in damage_prefixes:
         task = Task.init(project_name=f"ML-{model_name}", task_name=f"Forest_changes_v{i}", reuse_last_task_id=False)
         clearml_logger = task.get_logger()
 
-        # model = load_model(model, model_load_path)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = load_resnet50_model(model_load_path, device=device)
         model.logs_path = training_process_path
         train_model(
             model,
@@ -147,6 +149,7 @@ for damage_prefix in damage_prefixes:
             epochs=100,
             batch_size=6,
             learning_rate=0.001,
+            device=device,
             exclude_nir=exclude_nir,
             exclude_fMASK=exclude_fMASK,
             clearml_logger=clearml_logger,

@@ -106,8 +106,8 @@ class ForestTypesDataset:
                 profile: dict = src.profile.copy()
                 profile.update(
                     {
-                        "height": box.maxy - box.miny,
-                        "width": box.maxx - box.minx,
+                        "height": box.height,
+                        "width": box.width,
                         "transform": transform,
                         "driver": "GTiff",
                         "compress": "lzw",
