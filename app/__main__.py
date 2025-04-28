@@ -96,15 +96,15 @@ from app.utils.veg_index import preprocess_band
 # task.close()
 
 
-dataset_dir = Path("../forest_changes_dataset/generated_dataset_drying_RGBNIRSWIR/train")
-output_evaluation_dir = Path("../train_logs/drying_nir_fmask_v5")
+dataset_dir = Path("../forest_changes_dataset/generated_dataset_drying_RGBNIRSWIR/validation")
+output_evaluation_dir = Path("../train_logs/drying_nir_fmask_v6")
 model = ResNet50_UNet_NIR_fMASK(num_classes=1)
 red_tif_files = list(dataset_dir.glob("*_red.tif"))
 nums = [] or [int(fname.name.split("_")[0]) for fname in red_tif_files]
 
 predict_sample_from_dataset(
     model,
-    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_fMASK_drying_unfreezed_v5.pth",
+    "../sentinel_forest_types_classification_models/ResNet50_UNet_NIR_fMASK_drying_unfreezed_v6.pth",
     nums,
     dataset_dir,
     Path("D:/usr/T1-GIS/sentinel_forest_segmentation/forest_segm_xgboost_v8_16-12-2024.dat"),

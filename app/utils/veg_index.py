@@ -50,9 +50,9 @@ def ndwi_formula(nir: np.ndarray, green: np.ndarray) -> np.ndarray:
         return np.clip((green - nir) / (green + nir), -1, 1)
 
 
-def mndwi_formula(green: np.ndarray, swir2: np.ndarray) -> np.ndarray:
+def mndwi_formula(green: np.ndarray, swir1: np.ndarray) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
-        return np.clip((green - swir2) / (green + swir2), -1, 1)
+        return np.clip((green - swir1) / (green + swir1), -1, 1)
 
 
 def ndmi_formula(nir: np.ndarray, swir1: np.ndarray) -> np.ndarray:
