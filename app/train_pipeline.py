@@ -1,6 +1,7 @@
 import os
 import random
 from pathlib import Path
+import shutil
 
 import evaluate
 import torch
@@ -49,6 +50,29 @@ for damage_prefix in damage_prefixes:
         dataset_path=train_path,
         forest_model_path=forest_model_path,
     )
+
+    # Generate dataset
+    # temp_folder = Path("G:/Orni_forest/forest_changes_dataset/temp_folder/")
+    # train_dataset.generate_dataset(temp_folder)
+
+    # continue
+
+    for file in val_path.iterdir():
+        shutil.move(str(file), str(train_path / file.name))
+
+    groups = {}
+    for file in train_path.iterdir():
+        prefix = file.stem.split("_", 1)[0]
+        groups.setdefault(prefix, []).append(file)
+
+    all_prefixes = list(groups)
+    sample_size = int(0.2 * len(all_prefixes))
+    selected_prefixes = random.sample(all_prefixes, sample_size)
+
+    for prefix in selected_prefixes:
+        for file in groups[prefix]:
+            shutil.move(str(file), str(val_path / file.name))
+
     val_dataset = ForestTypesDataset(
         dataset_geojson_masks_dir,
         sentinel_root_dir,
@@ -56,12 +80,6 @@ for damage_prefix in damage_prefixes:
         dataset_path=val_path,
         forest_model_path=forest_model_path,
     )
-
-    # Generate dataset
-    temp_folder = Path("G:/Orni_forest/forest_changes_dataset/temp_folder/")
-    train_dataset.generate_dataset(temp_folder)
-
-    # continue
 
     # Version and model
     i = 1
