@@ -9,7 +9,7 @@ from loguru import logger
 from osgeo import gdal
 
 from app.dataset.dataset_single import ForestTypesDataset
-from app.train import evaluate, load_model
+from app.train import evaluate, load_resnet50_model
 from app.utils import veg_index
 
 
@@ -29,7 +29,7 @@ def predict_sample_from_dataset(
     if not exclude_nir:
         features_names.append("nir")
 
-    loaded_model = load_model(model, model_path)
+    loaded_model = load_resnet50_model(model_path)
 
     if not isinstance(sample_nums, list):
         sample_nums = [sample_nums]
@@ -148,7 +148,7 @@ def inference_test(
         input_tensor.append(ForestTypesDataset.create_forest_mask(sample_num, dataset_path, forest_model_path))
 
     input_tensor = np.array(input_tensor)
-    loaded_model = load_model(model, model_path)
+    loaded_model = load_resnet50_model(model_path)
 
     times = []
     for _ in range(num_runs):

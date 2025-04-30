@@ -4,7 +4,7 @@ from scipy.ndimage import shift as shift_ndimage
 from scipy.ndimage import zoom as zoom_ndimage
 
 
-def random_shift(bands, mask, max_shift=10, p=0.5):
+def random_shift(bands: list[np.ndarray], mask: np.ndarray, max_shift=50, p=0.25):
     """
     Случайный сдвиг (shift) всех каналов и маски вместе.
     :param bands: список numpy-массивов [H, W], по одному на каждый канал
@@ -32,7 +32,7 @@ def random_shift(bands, mask, max_shift=10, p=0.5):
     return shifted_bands, shifted_mask
 
 
-def random_zoom(bands, mask, scale_range=(0.8, 1.0), p=0.5):
+def random_zoom(bands: list[np.ndarray], mask: np.ndarray, scale_range=(0.8, 1.0), p=0.25):
     """
     Случайное уменьшение (zoom out), а затем обрезка/паддинг обратно к исходному размеру.
     :param bands: список numpy-массивов [H, W], по одному на каждый канал
@@ -92,7 +92,7 @@ def random_zoom(bands, mask, scale_range=(0.8, 1.0), p=0.5):
     return zoomed_bands, zoomed_mask
 
 
-def random_blur_or_sharpen(bands, mask, blur_prob=0.5, sigma_range=(0.5, 2.0), sharpen_amount=1.0, p=0.5):
+def random_blur_or_sharpen(bands: list[np.ndarray], mask: np.ndarray, blur_prob=0.5, sigma_range=(0.5, 2.0), sharpen_amount=1.0, p=0.2):
     """
     Случайное применение Gaussian blur или усиления резкости (unsharp mask).
     ВАЖНО: маску (mask) обычно НЕ размывают и не шарпят, т.к. это ломает разметку.
@@ -129,29 +129,25 @@ def random_blur_or_sharpen(bands, mask, blur_prob=0.5, sigma_range=(0.5, 2.0), s
     return new_bands, mask
 
 
-def random_haze(bands, alpha_range=(0.2, 0.8), p=0.5):
+def random_haze(band: np.ndarray, alpha_range=(0.2, 0.8), p=0.2):
     """
     Добавление «атмосферного» эффекта дымки (haze). Маска не меняется.
     Для упрощения считаем, что пиксели band в [0..1].
-    :param bands: список numpy-массивов [H, W]
+    :param band: numpy-массив [H, W]
     :param mask: numpy-массив [H, W]
     :param alpha_range: (min_alpha, max_alpha) – коэффициент прозрачности
     :param p: вероятность применить трансформацию
     :return: (new_bands, mask)
     """
     if np.random.rand() > p:
-        return bands
+        return band
 
     alpha = np.random.uniform(alpha_range[0], alpha_range[1])
     # Возьмём "белый" как 1.0 (если у нас нормировка [0..1])
     # Формула haze: new_pixel = alpha * pixel + (1 - alpha) * 1.0
 
-    new_bands = []
-    for band in bands:
-        haze_band = alpha * band + (1 - alpha) * 1.0
-        new_bands.append(np.clip(haze_band, 0, 1))
-
-    return new_bands
+    haze_band = alpha * band + (1 - alpha) * 1.0
+    return np.clip(haze_band, 0, 1)
 
 
 def add_salt_and_pepper_noise(image: np.ndarray, salt_percent: float, pepper_percent: float) -> np.ndarray:
